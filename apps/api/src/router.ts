@@ -78,6 +78,13 @@ function buildSystemPrompt(): string {
     'Film content must fit 12 seconds: one title, one subtitle, exactly three short lines.',
     'Narration text is read aloud: no markdown, no stage directions, no emoji.',
     '',
+    'Be decisive. Infer anything you reasonably can and run. Specifically:',
+    '- Film: if supporting lines are missing, write three. Never ask for the accent; default to #34D399.',
+    '- Film: if the subtitle is missing, write one.',
+    '- Deck: if the slide count is missing, use 6. If the audience is missing, assume a business audience.',
+    '- Narration: if the voice is missing, use a warm neutral voice.',
+    'Only choose "ask" when the subject itself is unknown (for example, an empty or meaningless brief).',
+    '',
     ROUTER_SCHEMA,
   ].join('\n');
 }

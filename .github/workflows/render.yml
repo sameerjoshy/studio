@@ -27,7 +27,27 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Resolve job capability
+        id: job
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          set -euo pipefail
+          capability=$(curl -sSf \
+            "$SUPABASE_URL/rest/v1/st_jobs?id=eq.$JOB_ID&select=capability" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            | jq -r '.[0].capability // ""')
+          echo "capability=$capability" >> "$GITHUB_OUTPUT"
+          echo "Job capability: $capability"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+
       - name: Cache Kokoro models
+        if: steps.job.outputs.capability == 'voice-kokoro'
         uses: actions/cache@v4
         with:
           path: runner/models
@@ -36,11 +56,17 @@ jobs:
       - name: Install runner dependencies
         run: npm install --no-audit --no-fund --prefix runner
 
-      - name: Install Python audio dependencies
+      - name: Install Kokoro
+        if: steps.job.outputs.capability == 'voice-kokoro'
         run: pip install --quiet kokoro-onnx soundfile
 
       - name: Fetch Kokoro models
+        if: steps.job.outputs.capability == 'voice-kokoro'
         run: bash runner/scripts/fetch-models.sh
+
+      - name: Install XTTS
+        if: steps.job.outputs.capability == 'voice-xtts'
+        run: pip install --quiet TTS
 
       - name: Run job
         env:
