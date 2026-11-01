@@ -94,6 +94,7 @@ async function callGroq(env: Env, opts: CallOptions): Promise<LlmResult> {
       response_format: { type: 'json_object' },
       temperature: opts.temperature ?? 0.2,
       max_tokens: opts.maxTokens ?? 1600,
+      ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
     }),
     signal: AbortSignal.timeout(60_000),
   });
@@ -166,6 +167,66 @@ async function callDeepseek(env: Env, opts: CallOptions): Promise<LlmResult> {
     tokensOut,
     costUsd: (tokensIn * 0.27 + tokensOut * 1.1) / 1_000_000,
   };
+}
+
+export async function listGroqModels(env: Env): Promise<string[]> {
+  if (!env.GROQ_API_KEY) return [];
+  const response = await fetch('https://api.groq.com/openai/v1/models', {
+    headers: { Authorization: `Bearer ${env.GROQ_API_KEY}` },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!response.ok) throw new Error(`Groq models ${response.status}`);
+  const payload = (await response.json()) as { data?: Array<{ id?: string }> };
+  return (payload.data ?? []).map((model) => model.id ?? '').filter(Boolean).sort();
+}
+
+export interface ProviderDiagnostic {
+  provider: 'groq' | 'deepseek' | 'gemini';
+  configured: boolean;
+  ok: boolean;
+  model?: string;
+  error?: string;
+}
+
+/**
+ * Probe each provider independently so operations can see exactly why the
+ * chain fell back. Session-gated; never exposed publicly.
+ */
+export async function diagnoseProviders(env: Env): Promise<ProviderDiagnostic[]> {
+  const opts: CallOptions = {
+    system: 'Return JSON only.',
+    user: 'Return {"ok":true}',
+    maxTokens: 200,
+    temperature: 0,
+  };
+
+  const providers = [
+    { name: 'groq' as const, configured: Boolean(env.GROQ_API_KEY), call: callGroq },
+    { name: 'deepseek' as const, configured: Boolean(env.DEEPSEEK_API_KEY), call: callDeepseek },
+    { name: 'gemini' as const, configured: Boolean(env.GEMINI_API_KEY), call: callGemini },
+  ];
+
+  const results: ProviderDiagnostic[] = [];
+
+  for (const provider of providers) {
+    if (!provider.configured) {
+      results.push({ provider: provider.name, configured: false, ok: false, error: 'No key set' });
+      continue;
+    }
+    try {
+      const result = await provider.call(env, opts);
+      results.push({ provider: provider.name, configured: true, ok: true, model: result.model });
+    } catch (error) {
+      results.push({
+        provider: provider.name,
+        configured: true,
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return results;
 }
 
 /**

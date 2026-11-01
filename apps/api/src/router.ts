@@ -1,6 +1,6 @@
 import type { Env } from './env';
 import { ACTIVE_CAPABILITIES, CAPABILITIES, getCapability, type Capability } from './capabilities';
-import { callJson } from './lib/llm';
+import { callJson, diagnoseProviders, listGroqModels } from './lib/llm';
 import { dispatchRender } from './lib/github';
 import { validateSpec } from './lib/spec';
 import {
@@ -277,6 +277,14 @@ export async function handleApi(env: Env, request: Request, url: URL): Promise<R
 
   if (path === '/api/capabilities' && method === 'GET') {
     return json({ capabilities: CAPABILITIES });
+  }
+
+  if (path === '/api/diag' && method === 'GET') {
+    return json({ providers: await diagnoseProviders(env) });
+  }
+
+  if (path === '/api/diag/models' && method === 'GET') {
+    return json({ models: await listGroqModels(env) });
   }
 
   if (path === '/api/chat' && method === 'POST') {
