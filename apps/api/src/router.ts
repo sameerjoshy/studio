@@ -134,7 +134,13 @@ async function startJob(
  * harness authenticates with RUNNER_SECRET instead of holding LLM keys.
  */
 export async function handleInternalLlm(env: Env, request: Request): Promise<Response> {
-  const body = await readJson<{ system?: string; user?: string; maxTokens?: number }>(request);
+  const body = await readJson<{
+    system?: string;
+    user?: string;
+    maxTokens?: number;
+    json?: boolean;
+    prefer?: 'groq' | 'deepseek' | 'gemini';
+  }>(request);
   const system = typeof body?.system === 'string' ? body.system : '';
   const user = typeof body?.user === 'string' ? body.user : '';
 
@@ -145,7 +151,14 @@ export async function handleInternalLlm(env: Env, request: Request): Promise<Res
   const maxTokens = Number.isFinite(requested) ? Math.min(4000, Math.max(200, requested)) : 2200;
 
   try {
-    const result = await callJson(env, { system, user, maxTokens, temperature: 0.2 });
+    const result = await callJson(env, {
+      system,
+      user,
+      maxTokens,
+      temperature: 0.2,
+      jsonMode: body?.json !== false,
+      prefer: body?.prefer,
+    });
     return json({
       data: result.data,
       provider: result.provider,

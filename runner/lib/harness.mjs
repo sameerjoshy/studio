@@ -1,38 +1,44 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { run } from './shell.mjs';
 
-const ALLOWED_COMMANDS = new Set([
-  'python',
-  'python3',
-  'ls',
-  'find',
-  'cat',
-  'head',
-  'tail',
-  'wc',
-  'grep',
-  'mkdir',
-  'cp',
-  'mv',
-]);
+const MAX_REPAIR_ROUNDS = 2;
 
-const MAX_OBSERVATION = 4000;
-const MAX_STEPS = 40;
+const PALETTE = {
+  ink: '#0A192F',
+  panel: '#112240',
+  accent: '#4F46E5',
+  mint: '#34D399',
+  text: '#E2E8F0',
+  muted: '#94A3B8',
+  white: '#FFFFFF',
+};
 
-function clip(text, limit = MAX_OBSERVATION) {
-  const value = String(text ?? '');
-  if (value.length <= limit) return value;
-  return `${value.slice(0, limit)}\n...[truncated ${value.length - limit} chars]`;
-}
+const SVG_RULES = [
+  'SVG CONTRACT (violating these causes blocking checker errors)',
+  '- Root: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720" lang="en" data-pptx-page-role="cover|content|closing">',
+  '- Background: <rect x="0" y="0" width="1280" height="720" fill="#0A192F"/> with NO data-pptx-role and NO id.',
+  '- Do NOT use <g> elements at all. Every <rect>, <line>, and <text> sits directly under <svg>.',
+  '- One <text> per paragraph. Extra lines use <tspan x="SAME_X" dy="LINE_HEIGHT">. Never split a paragraph across sibling <text> elements.',
+  '- Valid XML. Raw Unicode is fine (—, ·, →). Escape & as &amp; and < as &lt;. No HTML entities.',
+  '- Fonts: Arial only. Body 22-28px, title 44-60px, footnote >= 16px.',
+  `- Colors: uppercase #RRGGBB only. Palette: ink ${PALETTE.ink}, panel ${PALETTE.panel}, accent ${PALETTE.accent}, mint ${PALETTE.mint}, text ${PALETTE.text}, muted ${PALETTE.muted}, white ${PALETTE.white}.`,
+  '- Keep all text inside x 72-1208 and y 60-680. Keep body content above y=620 so the footer band stays clear. No overflow.',
+  '- Never print the page role (cover/content/closing) as visible copy. Section labels must be thematic.',
+  '- Never use <g>, <foreignObject>, gradients, filters, images, or external references.',
+  '',
+  'REFERENCE SLIDE (copy this structure, change only content and colors)',
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720" lang="en" data-pptx-page-role="content">',
+  `  <rect x="0" y="0" width="1280" height="720" fill="${PALETTE.ink}"/>`,
+  `  <text x="72" y="96" font-family="Arial" font-size="20" fill="${PALETTE.mint}">SECTION LABEL</text>`,
+  `  <text x="72" y="172" font-family="Arial" font-size="48" font-weight="bold" fill="${PALETTE.white}">Slide title goes here</text>`,
+  `  <text x="72" y="264" font-family="Arial" font-size="26" fill="${PALETTE.text}">First point that explains the idea.<tspan x="72" dy="46">Second point with a concrete detail.</tspan><tspan x="72" dy="46">Third point that closes the loop.</tspan></text>`,
+  `  <text x="72" y="668" font-family="Arial" font-size="18" fill="${PALETTE.muted}">GTM-360 - Studio</text>`,
+  `  <text x="1208" y="668" text-anchor="end" font-family="Arial" font-size="18" fill="${PALETTE.muted}">2</text>`,
+  '</svg>',
+].join('\n');
 
-function inside(base, target) {
-  const resolved = path.resolve(base, target);
-  const root = path.resolve(base);
-  return resolved === root || resolved.startsWith(root + path.sep);
-}
-
-async function callModel({ system, user, maxTokens = 2600 }) {
+async function callModel({ system, user, maxTokens = 3200, prefer = 'deepseek' }) {
   const base = process.env.STUDIO_BASE_URL;
   const secret = process.env.RUNNER_SECRET;
   if (!base || !secret) throw new Error('STUDIO_BASE_URL and RUNNER_SECRET are required');
@@ -40,219 +46,281 @@ async function callModel({ system, user, maxTokens = 2600 }) {
   const response = await fetch(`${base}/api/internal/llm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-runner-secret': secret },
-    body: JSON.stringify({ system, user, maxTokens }),
-    signal: AbortSignal.timeout(120_000),
+    body: JSON.stringify({ system, user, maxTokens, prefer }),
+    signal: AbortSignal.timeout(180_000),
   });
 
   if (!response.ok) {
     throw new Error(`Model gateway ${response.status}: ${(await response.text()).slice(0, 200)}`);
   }
 
-  return response.json();
+  const payload = await response.json();
+  return { data: payload.data ?? {}, provider: payload.provider ?? 'unknown' };
 }
 
-async function listFiles(repo, rel = '.') {
-  const target = path.resolve(repo, rel);
-  if (!inside(repo, target)) return 'Path escapes the repository.';
+function cleanSvg(value) {
+  let svg = String(value ?? '').trim();
+  if (svg.startsWith('```')) {
+    svg = svg.replace(/^```(?:svg)?/i, '').replace(/```$/, '').trim();
+  }
+  const start = svg.indexOf('<svg');
+  const end = svg.lastIndexOf('</svg>');
+  if (start >= 0 && end > start) svg = svg.slice(start, end + 6);
+  return svg;
+}
 
-  const skip = new Set(['.git', 'node_modules', '__pycache__', '.venv', 'venv']);
-  const entries = [];
+function validSvg(svg) {
+  return (
+    svg.startsWith('<svg') &&
+    svg.endsWith('</svg>') &&
+    svg.includes('viewBox="0 0 1280 720"') &&
+    !svg.includes('<foreignObject') &&
+    !svg.includes('<g ')
+    && !svg.includes('<g>')
+  );
+}
 
-  async function walk(dir) {
-    if (entries.length >= 400) return;
-    let children;
-    try {
-      children = await readdir(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const child of children) {
-      if (entries.length >= 400) break;
-      if (skip.has(child.name)) continue;
-      const full = path.join(dir, child.name);
-      const relative = path.relative(repo, full).split(path.sep).join('/');
-      if (child.isDirectory()) {
-        entries.push(`${relative}/`);
-        await walk(full);
-      } else {
-        entries.push(relative);
-      }
-    }
+async function planDeck({ brief, slides, audience }) {
+  const contentSlides = Math.max(1, slides - 2);
+  const system = [
+    'You are a presentation strategist. Return JSON only.',
+    'Schema: {"title": string, "subtitle": string, "slides": [{"title": string, "bullets": [string, string, string]}]}',
+    `Produce exactly ${contentSlides} content slides. Each slide gets 3 concrete bullets, max 18 words per bullet.`,
+    'The title is the deck title, the subtitle is one line of context. Write specific, non-generic copy from the brief.',
+  ].join('\n');
+
+  const result = await callModel({
+    system,
+    user: `BRIEF:\n${brief}\n\nAudience: ${audience}\nContent slides: ${contentSlides}`,
+    maxTokens: 1600,
+  });
+
+  const plan = result.data ?? {};
+  const planned = Array.isArray(plan.slides) ? plan.slides : [];
+  const slidesOut = planned
+    .map((slide) => ({
+      title: String(slide?.title ?? '').trim(),
+      bullets: Array.isArray(slide?.bullets)
+        ? slide.bullets.map((bullet) => String(bullet).trim()).filter(Boolean).slice(0, 4)
+        : [],
+    }))
+    .filter((slide) => slide.title)
+    .slice(0, contentSlides);
+
+  if (!slidesOut.length) throw new Error('Planner returned no slides');
+
+  return {
+    title: String(plan.title ?? '').trim() || 'Studio deck',
+    subtitle: String(plan.subtitle ?? '').trim() || `Prepared for ${audience}`,
+    slides: slidesOut,
+    provider: result.provider,
+  };
+}
+
+async function authorSlide({ plan, slide, role, index, total, audience }) {
+  const system = [
+    'You are a senior presentation designer. Return JSON only: {"svg": "<complete svg markup>"}.',
+    SVG_RULES,
+    '',
+    `Deck: ${plan.title} - ${plan.subtitle}`,
+    `Audience: ${audience}`,
+    `Page ${index} of ${total}. Page role: ${role}.`,
+    'Design with intent: a clear hierarchy, generous margins, one accent color. Vary the layout between pages.',
+    'Section labels and eyebrows must be thematic, never the words cover, content, or closing.',
+    'The svg value must be one complete <svg> element and nothing else.',
+  ].join('\n');
+
+  const body =
+    role === 'cover'
+      ? `Cover page.\nTitle: ${plan.title}\nSubtitle: ${plan.subtitle}\nAudience: ${audience}\nFooter text: ${plan.title}`
+      : role === 'closing'
+        ? `Closing page.\nMain line: Thank you\nSub line: ${plan.subtitle}\nFooter: GTM-360 - Studio`
+        : `Content page.\nTitle: ${slide.title}\nBullets:\n${(slide.bullets.length ? slide.bullets : ['Key point']).map((bullet) => `- ${bullet}`).join('\n')}`;
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const result = await callModel({ system, user: body, maxTokens: 3600 });
+    const svg = cleanSvg(result.data?.svg);
+    if (validSvg(svg)) return { svg, provider: result.provider };
+    if (attempt === 2) throw new Error(`Slide ${index} did not return valid SVG`);
   }
 
-  await walk(target);
-  return entries.length ? entries.join('\n') : '(empty)';
+  throw new Error(`Slide ${index} failed`);
 }
 
-async function readText(repo, rel, offset = 0, limit = 6000) {
-  const target = path.resolve(repo, rel);
-  if (!inside(repo, target)) return 'Path escapes the repository.';
+async function runTool(python, scripts, args, cwd, label) {
   try {
-    const text = await readFile(target, 'utf8');
-    if (text.includes('\u0000')) return 'Binary file.';
-    const start = Math.max(0, Number(offset) || 0);
-    const size = Math.min(12_000, Math.max(500, Number(limit) || 6000));
-    return clip(text.slice(start, start + size), size + 200);
-  } catch (error) {
-    return `Could not read ${rel}: ${error.message}`;
-  }
-}
-
-async function writeText(project, rel, content) {
-  const target = path.resolve(project, rel);
-  if (!inside(project, target)) return 'Refused: writes are limited to the project directory.';
-  if (typeof content !== 'string') return 'content must be a string';
-  if (content.length > 120_000) return 'Refused: file too large.';
-
-  await mkdir(path.dirname(target), { recursive: true });
-  await writeFile(target, content, 'utf8');
-  return `Wrote ${content.length} bytes to ${path.relative(project, target)}`;
-}
-
-function parseCommand(command) {
-  const value = String(command ?? '').trim();
-  if (!value) return { error: 'Empty command.' };
-  if (/[;&|<>`$]/.test(value)) return { error: 'Shell operators are not allowed.' };
-
-  const [binary, ...args] = value.split(/\s+/);
-  const base = binary.includes('/') ? binary.split('/').pop() : binary;
-  if (!ALLOWED_COMMANDS.has(base)) {
-    return { error: `Command "${base}" is not allowed. Allowed: ${[...ALLOWED_COMMANDS].join(', ')}` };
-  }
-  return { binary, args };
-}
-
-async function executeCommand(repo, command) {
-  const parsed = parseCommand(command);
-  if (parsed.error) return parsed.error;
-
-  try {
-    const result = await run(parsed.binary, parsed.args, {
-      cwd: repo,
+    return await run(python, [path.join(scripts, args[0]), ...args.slice(1)], {
+      cwd,
       shell: false,
       timeoutMs: 300_000,
     });
-    return clip(`exit=0\n${result.stdout}\n${result.stderr}`.trim());
   } catch (error) {
-    return clip(`FAILED: ${error.message}`);
+    return { stdout: '', stderr: `${label} failed: ${error.message}` };
   }
 }
 
-function buildSystem({ repo, project, slides, audience }) {
-  const skill = path.join(repo, 'skills', 'ppt-master');
+async function newestPptx(dir) {
+  let best = null;
 
-  return [
-    'You are PPT Master executing in headless Quick mode. You author real slide SVGs and export a native PowerPoint.',
-    '',
-    `REPO = ${repo}`,
-    `SKILL_DIR = ${skill}`,
-    `PROJECT = ${project}`,
-    '',
-    'You may read files anywhere in REPO, but you may only WRITE inside PROJECT. Never modify SKILL_DIR.',
-    '',
-    'DELIVERABLE',
-    `- ${slides} slides, 16:9 canvas, for ${audience}.`,
-    '- One file per slide: PROJECT/svg_output/P01.svg, P02.svg, ...',
-    '- Then run the checker and the exporter, then call finish.',
-    '',
-    'SVG CONTRACT (follow exactly)',
-    '- Root: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720" lang="en" data-pptx-page-role="cover|content|closing">',
-    '- Background: <rect x="0" y="0" width="1280" height="720" fill="#0A192F" data-pptx-role="background"/>',
-    '- Group each logical unit in <g id="...">. Put text in <text> elements, never in foreignObject.',
-    '- Valid XML: write raw Unicode (—, ·, →). Escape & as &amp;, < as &lt;. No HTML entities.',
-    '- Fonts: Arial only. Title 44-64px, body 20-28px, footnote >= 16px.',
-    '- Colors: uppercase #RRGGBB. Palette: #0A192F ink, #112240 panel, #4F46E5 accent, #34D399 mint, #E2E8F0 text, #94A3B8 muted, #FFFFFF white.',
-    '- Text must stay inside the canvas. Use <tspan> for manual line breaks. No overflow, no clipping.',
-    '',
-    'QUALITY BAR',
-    '- A cover, N-2 content pages, and a closing page.',
-    '- Every content page: one clear takeaway, 3-5 supporting points, consistent margins (72px), readable contrast.',
-    '- Vary layout across pages (split, numbered list, quote, comparison) but keep one visual system.',
-    '- Write real, specific copy for the brief. No lorem ipsum, no "Title here".',
-    '',
-    'COMMANDS (run from REPO, no shell operators)',
-    `1. python3 ${skill}/scripts/svg_quality_checker.py ${project} --quick-generate`,
-    `2. python3 ${skill}/scripts/svg_to_pptx.py ${project} --quick-generate`,
-    'Fix ERROR findings and re-run. Warnings are acceptable.',
-    '',
-    'TOOLS (one JSON object per turn)',
-    '{"thought":"...","action":"list_files","args":{"path":"."}}',
-    '{"thought":"...","action":"read_file","args":{"path":"...","offset":0,"limit":6000}}',
-    '{"thought":"...","action":"write_file","args":{"path":"svg_output/P01.svg","content":"<svg ...>"}}',
-    '{"thought":"...","action":"run_command","args":{"command":"python3 ..."}}',
-    '{"thought":"...","action":"finish","args":{"summary":"..."}}',
-    '',
-    'Rules: one action per turn. Do not ask questions. Do not re-read a file you already read. Keep responses small.',
-    'Respond with the JSON object only, no prose outside it.',
-  ].join('\n');
+  async function walk(current) {
+    const entries = await readdir(current, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (entry.name === '.git' || entry.name === 'node_modules') continue;
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else if (entry.name.toLowerCase().endsWith('.pptx')) {
+        const info = await stat(full).catch(() => null);
+        if (info && (!best || info.mtimeMs > best.mtime)) best = { file: full, mtime: info.mtimeMs };
+      }
+    }
+  }
+
+  await walk(dir);
+  return best?.file ?? null;
 }
 
-function compactAction(action) {
-  const name = action?.action ?? 'unknown';
-  const args = action?.args ?? {};
-  if (name === 'write_file') {
-    return JSON.stringify({ action: name, path: args.path, bytes: String(args.content ?? '').length });
+async function readQualityReport(project) {
+  try {
+    const raw = await readFile(path.join(project, 'validation', 'svg_quality_report.json'), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return null;
   }
-  if (name === 'read_file') {
-    return JSON.stringify({ action: name, path: args.path });
-  }
-  if (name === 'run_command') {
-    return JSON.stringify({ action: name, command: String(args.command ?? '').slice(0, 160) });
-  }
-  return JSON.stringify({ action: name, thought: String(action?.thought ?? '').slice(0, 200) });
 }
 
-export async function runHarness({ repo, project, brief, slides, audience, progress }) {
-  const system = buildSystem({ repo, project, slides, audience });
-  const intro = [
-    'BEGIN.',
-    `BRIEF:\n${brief}`,
-    `Slide count: ${slides}`,
-    `Audience: ${audience}`,
-    'Start by writing P01.svg. Work one slide at a time, then run the checker and exporter.',
-  ].join('\n\n');
+function failingPages(report) {
+  if (!report || !Array.isArray(report.files)) return [];
+  return report.files
+    .filter((file) => Array.isArray(file.errors) && file.errors.length > 0)
+    .map((file) => ({
+      file: String(file.file).replace(/\.svg$/i, ''),
+      errors: file.errors.slice(0, 8).map(String),
+    }));
+}
 
-  const history = [intro];
+export async function runHarness({ repo, project, brief, slides, audience, progress, python }) {
+  const scripts = path.join(repo, 'skills', 'ppt-master', 'scripts');
+  const svgDir = path.join(project, 'svg_output');
   const providers = new Set();
   let steps = 0;
 
-  for (let step = 1; step <= MAX_STEPS; step += 1) {
-    steps = step;
-    const percent = Math.min(86, 16 + Math.round((step / MAX_STEPS) * 70));
-    await progress('authoring', percent, `Harness step ${step}`);
+  await mkdir(svgDir, { recursive: true });
 
-    const user = [history[0], ...history.slice(1).slice(-10)].join('\n\n');
-    const result = await callModel({ system, user });
-    providers.add(result.provider);
+  await progress('planning', 12, 'Planning the deck');
+  const plan = await planDeck({ brief, slides, audience });
+  providers.add(plan.provider);
 
-    const action = result.data ?? {};
-    const name = String(action.action ?? '');
-    const args = action.args ?? {};
-    let observation = '';
+  const contentCount = plan.slides.length;
+  const total = contentCount + 2;
 
-    if (name === 'write_file') {
-      observation = await writeText(project, String(args.path ?? ''), args.content);
-    } else if (name === 'read_file') {
-      observation = await readText(repo, String(args.path ?? ''), args.offset, args.limit);
-    } else if (name === 'list_files') {
-      observation = await listFiles(repo, String(args.path ?? '.'));
-    } else if (name === 'run_command') {
-      observation = await executeCommand(repo, String(args.command ?? ''));
-      if (/svg_to_pptx\.py/.test(String(args.command ?? '')) && observation.startsWith('exit=0')) {
-        history.push(`ASSISTANT: ${compactAction(action)}`);
-        history.push(`OBSERVATION: ${observation}`);
-        return { providers: [...providers], steps };
-      }
-    } else if (name === 'finish') {
-      history.push(`ASSISTANT: ${compactAction(action)}`);
-      return { providers: [...providers], steps };
-    } else {
-      observation = `Unknown action "${name}". Use list_files, read_file, write_file, run_command, or finish.`;
-    }
+  const pages = [
+    { role: 'cover', slide: { title: plan.title, bullets: [] } },
+    ...plan.slides.map((slide) => ({ role: 'content', slide })),
+    { role: 'closing', slide: { title: 'Thank you', bullets: [] } },
+  ];
 
-    history.push(`ASSISTANT: ${compactAction(action)}`);
-    history.push(`OBSERVATION: ${clip(observation)}`);
+  for (let index = 0; index < pages.length; index += 1) {
+    steps += 1;
+    const percent = 16 + Math.round((index / pages.length) * 55);
+    await progress('authoring', percent, `Authoring slide ${index + 1} of ${pages.length}`);
+
+    const authored = await authorSlide({
+      plan,
+      slide: pages[index].slide,
+      role: pages[index].role,
+      index: index + 1,
+      total,
+      audience,
+    });
+
+    providers.add(authored.provider);
+    const name = `P${String(index + 1).padStart(2, '0')}.svg`;
+    await writeFile(path.join(svgDir, name), authored.svg, 'utf8');
   }
 
-  return { providers: [...providers], steps };
+  await progress('checking', 74, 'Running the ppt-master quality checker');
+
+  const checkerArgs = [
+    'svg_quality_checker.py',
+    project,
+    '--quick-generate',
+    '--canonical-authoring',
+    '--stage',
+    'final',
+    '--json',
+  ];
+
+  let checker = await runTool(python, scripts, checkerArgs, repo, 'checker');
+  let report = await readQualityReport(project);
+  steps += 1;
+
+  for (let round = 1; round <= MAX_REPAIR_ROUNDS; round += 1) {
+    const broken = failingPages(report);
+    if (!broken.length) break;
+
+    await progress('repairing', 78 + round * 3, `Repairing ${broken.length} slide(s)`);
+
+    for (const page of broken) {
+      const target = path.join(svgDir, `${page.file}.svg`);
+      const current = await readFile(target, 'utf8').catch(() => '');
+      if (!current) continue;
+
+      const system = [
+        'You repair presentation SVGs. Return JSON only: {"svg": "<complete corrected svg>"}.',
+        SVG_RULES,
+        '',
+        'Fix every listed error. Keep the design intent and copy; change only what the errors require.',
+      ].join('\n');
+
+      const result = await callModel({
+        system,
+        user: `CURRENT SVG:\n${current}\n\nCHECKER ERRORS:\n${page.errors.join('\n')}`,
+        maxTokens: 3600,
+      });
+
+      const repaired = cleanSvg(result.data?.svg);
+      if (validSvg(repaired)) {
+        await writeFile(target, repaired, 'utf8');
+        providers.add(result.provider);
+        steps += 1;
+      }
+    }
+
+    checker = await runTool(python, scripts, checkerArgs, repo, 'checker');
+    report = await readQualityReport(project);
+    steps += 1;
+  }
+
+  const remaining = failingPages(report);
+  if (remaining.length) {
+    const detail = remaining.map((page) => `${page.file}: ${page.errors[0] ?? ''}`).join(' | ');
+    throw new Error(`Checker still failing - ${detail}`.slice(0, 600));
+  }
+
+  if (!report) {
+    throw new Error(`Checker produced no report: ${(checker.stderr || checker.stdout).slice(-300)}`);
+  }
+
+  await progress('exporting', 90, 'Exporting native PowerPoint');
+  const exporter = await runTool(
+    python,
+    scripts,
+    ['svg_to_pptx.py', project, '--quick-generate'],
+    repo,
+    'exporter',
+  );
+
+  const file = await newestPptx(project);
+  if (!file) {
+    throw new Error(`Export produced no pptx: ${(exporter.stderr || exporter.stdout).slice(-300)}`);
+  }
+
+  return {
+    file,
+    providers: [...providers],
+    steps,
+    plan,
+    total,
+  };
 }

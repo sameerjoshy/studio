@@ -14,6 +14,43 @@ interface CallOptions {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  jsonMode?: boolean;
+  prefer?: 'groq' | 'deepseek' | 'gemini';
+}
+
+function extractFirstJson(text: string): string | null {
+  const start = text.search(/[[{]/);
+  if (start < 0) return null;
+
+  const open = text[start];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === open) depth += 1;
+    else if (char === close) {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, index + 1);
+    }
+  }
+
+  return null;
 }
 
 function parseJson(text: string): unknown {
@@ -21,11 +58,8 @@ function parseJson(text: string): unknown {
   try {
     return JSON.parse(trimmed);
   } catch {
-    const start = trimmed.search(/[[{]/);
-    const end = Math.max(trimmed.lastIndexOf('}'), trimmed.lastIndexOf(']'));
-    if (start >= 0 && end > start) {
-      return JSON.parse(trimmed.slice(start, end + 1));
-    }
+    const extracted = extractFirstJson(trimmed);
+    if (extracted) return JSON.parse(extracted);
     throw new Error('Model did not return JSON');
   }
 }
@@ -42,7 +76,7 @@ async function callGemini(env: Env, opts: CallOptions): Promise<LlmResult> {
       systemInstruction: { parts: [{ text: opts.system }] },
       contents: [{ role: 'user', parts: [{ text: opts.user }] }],
       generationConfig: {
-        responseMimeType: 'application/json',
+        ...(opts.jsonMode === false ? {} : { responseMimeType: 'application/json' }),
         temperature: opts.temperature ?? 0.2,
         maxOutputTokens: opts.maxTokens ?? 1600,
       },
@@ -91,7 +125,7 @@ async function callGroq(env: Env, opts: CallOptions): Promise<LlmResult> {
         { role: 'system', content: opts.system },
         { role: 'user', content: opts.user },
       ],
-      response_format: { type: 'json_object' },
+      ...(opts.jsonMode === false ? {} : { response_format: { type: 'json_object' } }),
       temperature: opts.temperature ?? 0.2,
       max_tokens: opts.maxTokens ?? 1600,
       ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
@@ -137,7 +171,7 @@ async function callDeepseek(env: Env, opts: CallOptions): Promise<LlmResult> {
         { role: 'system', content: opts.system },
         { role: 'user', content: opts.user },
       ],
-      response_format: { type: 'json_object' },
+      ...(opts.jsonMode === false ? {} : { response_format: { type: 'json_object' } }),
       temperature: opts.temperature ?? 0.2,
       max_tokens: opts.maxTokens ?? 1600,
     }),
@@ -237,25 +271,20 @@ export async function diagnoseProviders(env: Env): Promise<ProviderDiagnostic[]>
 export async function callJson(env: Env, opts: CallOptions): Promise<LlmResult> {
   const errors: string[] = [];
 
-  if (env.GROQ_API_KEY) {
-    try {
-      return await callGroq(env, opts);
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
+  const providers = [
+    { name: 'groq' as const, key: env.GROQ_API_KEY, call: callGroq },
+    { name: 'deepseek' as const, key: env.DEEPSEEK_API_KEY, call: callDeepseek },
+    { name: 'gemini' as const, key: env.GEMINI_API_KEY, call: callGemini },
+  ];
+
+  if (opts.prefer) {
+    providers.sort((a, b) => (a.name === opts.prefer ? -1 : b.name === opts.prefer ? 1 : 0));
   }
 
-  if (env.DEEPSEEK_API_KEY) {
+  for (const provider of providers) {
+    if (!provider.key) continue;
     try {
-      return await callDeepseek(env, opts);
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  if (env.GEMINI_API_KEY) {
-    try {
-      return await callGemini(env, opts);
+      return await provider.call(env, opts);
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
     }

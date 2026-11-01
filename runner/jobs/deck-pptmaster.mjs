@@ -111,13 +111,14 @@ export default async function deckPptmaster({ spec, workDir, progress, root }) {
       slides: slideCount,
       audience,
       progress,
+      python,
     });
   } catch (error) {
     harnessError = error instanceof Error ? error.message : String(error);
     await progress('fallback', 60, `Harness failed: ${harnessError.slice(0, 180)}`);
   }
 
-  let file = await newestPptx(project);
+  let file = harness?.file ?? (await newestPptx(project));
 
   if (!file) {
     await progress('fallback', 70, 'No deck exported; using the deterministic fallback');
@@ -153,7 +154,8 @@ export default async function deckPptmaster({ spec, workDir, progress, root }) {
       engine: 'ppt-master',
       harnessSteps: harness?.steps ?? 0,
       providers: harness?.providers ?? [],
-      slides: slideCount,
+      slides: harness?.total ?? slideCount,
+      approvedPlan: harness?.plan?.title,
       harnessError,
     },
   };
