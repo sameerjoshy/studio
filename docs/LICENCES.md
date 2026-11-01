@@ -11,8 +11,9 @@ follow the output.
 | pptxgenjs | MIT | Commercial use allowed. |
 | ppt-master | MIT | The optional PDF path pulls PyMuPDF, which is AGPL-3.0. |
 | OpenMontage | AGPL-3.0 | Copyleft. If you modify it and offer it as a network service, you must publish the source. Keep it an external process rather than a vendored module. |
+| Groq free tier | Groq terms | Free tier with rate limits. Check whether your prompts may be used for service improvement. |
 | Gemini free tier | Google terms | Free-tier prompts may be used to improve Google's models. Do not send material you cannot share with that policy. |
-| DeepSeek API | DeepSeek terms | Paid, metered. Used only as a fallback. |
+| DeepSeek API | DeepSeek terms | Paid, metered. Used as the fallback. |
 | GitHub Actions | GitHub terms | Free for public repositories. Fair-use limits apply. |
 
 ## Practical rule

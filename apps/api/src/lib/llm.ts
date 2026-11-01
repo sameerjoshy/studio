@@ -2,7 +2,7 @@ import type { Env } from '../env';
 
 export interface LlmResult {
   data: unknown;
-  provider: 'gemini' | 'deepseek';
+  provider: 'groq' | 'gemini' | 'deepseek';
   model: string;
   tokensIn: number;
   tokensOut: number;
@@ -75,6 +75,51 @@ async function callGemini(env: Env, opts: CallOptions): Promise<LlmResult> {
   };
 }
 
+async function callGroq(env: Env, opts: CallOptions): Promise<LlmResult> {
+  if (!env.GROQ_API_KEY) throw new Error('GROQ_API_KEY not set');
+  const model = env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: opts.system },
+        { role: 'user', content: opts.user },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: opts.temperature ?? 0.2,
+      max_tokens: opts.maxTokens ?? 1600,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Groq ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+
+  const text = payload.choices?.[0]?.message?.content ?? '';
+  if (!text) throw new Error('Groq returned no text');
+
+  return {
+    data: parseJson(text),
+    provider: 'groq',
+    model,
+    tokensIn: payload.usage?.prompt_tokens ?? 0,
+    tokensOut: payload.usage?.completion_tokens ?? 0,
+    costUsd: 0,
+  };
+}
+
 async function callDeepseek(env: Env, opts: CallOptions): Promise<LlmResult> {
   if (!env.DEEPSEEK_API_KEY) throw new Error('DEEPSEEK_API_KEY not set');
   const model = env.DEEPSEEK_MODEL || 'deepseek-chat';
@@ -124,15 +169,16 @@ async function callDeepseek(env: Env, opts: CallOptions): Promise<LlmResult> {
 }
 
 /**
- * Free-first provider chain: Gemini Flash free tier, then DeepSeek.
- * Both calls are JSON-mode, so callers get a parsed object or a thrown error.
+ * Free-first provider chain: Groq free tier, then DeepSeek, then Gemini.
+ * Every call is JSON-mode, so callers get a parsed object or a thrown error.
+ * Providers without a key are skipped, so the chain degrades cleanly.
  */
 export async function callJson(env: Env, opts: CallOptions): Promise<LlmResult> {
   const errors: string[] = [];
 
-  if (env.GEMINI_API_KEY) {
+  if (env.GROQ_API_KEY) {
     try {
-      return await callGemini(env, opts);
+      return await callGroq(env, opts);
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
     }
@@ -141,6 +187,14 @@ export async function callJson(env: Env, opts: CallOptions): Promise<LlmResult> 
   if (env.DEEPSEEK_API_KEY) {
     try {
       return await callDeepseek(env, opts);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  if (env.GEMINI_API_KEY) {
+    try {
+      return await callGemini(env, opts);
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
     }

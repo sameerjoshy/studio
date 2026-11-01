@@ -6,6 +6,7 @@ export interface Env {
   STUDIO_BRANCH: string;
   GEMINI_MODEL: string;
   DEEPSEEK_MODEL: string;
+  GROQ_MODEL: string;
 
   STUDIO_PASSPHRASE: string;
   STUDIO_SESSION_SECRET: string;
@@ -16,4 +17,5 @@ export interface Env {
 
   GEMINI_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  GROQ_API_KEY?: string;
 }

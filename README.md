@@ -59,8 +59,9 @@ Worker (`wrangler secret put <NAME>`):
 | `GITHUB_TOKEN` | fine-grained token with Actions write on this repo |
 | `SUPABASE_URL` | shared Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | service role key (server only) |
-| `GEMINI_API_KEY` | free-tier router and content model |
-| `DEEPSEEK_API_KEY` | fallback model |
+| `GROQ_API_KEY` | free-tier router and content model (primary) |
+| `DEEPSEEK_API_KEY` | paid fallback (~$0.001 per request) |
+| `GEMINI_API_KEY` | optional third fallback |
 
 Repository secrets (Settings -> Secrets and variables -> Actions):
 

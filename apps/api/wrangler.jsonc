@@ -16,6 +16,7 @@
     "STUDIO_WORKFLOW": "render.yml",
     "STUDIO_BRANCH": "main",
     "GEMINI_MODEL": "gemini-3.8-flash",
-    "DEEPSEEK_MODEL": "deepseek-chat"
+    "DEEPSEEK_MODEL": "deepseek-chat",
+    "GROQ_MODEL": "llama-3.3-70b-versatile"
   }
 }
