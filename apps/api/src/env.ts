@@ -1,0 +1,19 @@
+export interface Env {
+  ASSETS: Fetcher;
+
+  STUDIO_REPO: string;
+  STUDIO_WORKFLOW: string;
+  STUDIO_BRANCH: string;
+  GEMINI_MODEL: string;
+  DEEPSEEK_MODEL: string;
+
+  STUDIO_PASSPHRASE: string;
+  STUDIO_SESSION_SECRET: string;
+  GITHUB_TOKEN: string;
+
+  SUPABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+
+  GEMINI_API_KEY?: string;
+  DEEPSEEK_API_KEY?: string;
+}

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en"
+  data-composition-variables='[
+    {"id":"title","type":"string","label":"Title","default":"Content Radar"},
+    {"id":"subtitle","type":"string","label":"Subtitle","default":"Know where the conversation is going."},
+    {"id":"line1","type":"string","label":"Line 1","default":"Signals from the market"},
+    {"id":"line2","type":"string","label":"Line 2","default":"Ranked by relevance"},
+    {"id":"line3","type":"string","label":"Line 3","default":"Delivered as a brief"},
+    {"id":"accent","type":"color","label":"Accent","default":"#34D399"}
+  ]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: #050b14;
+        font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      }
+      #root {
+        position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        background:
+          radial-gradient(1100px 620px at 50% 26%, color-mix(in srgb, var(--accent, #34d399) 22%, transparent), transparent 62%),
+          radial-gradient(820px 520px at 84% 78%, rgba(99, 102, 241, 0.14), transparent 60%),
+          #050b14;
+      }
+      .clip { position: absolute; inset: 0; overflow: hidden; }
+      .scene { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 2; }
+      .eyebrow {
+        color: var(--accent, #34d399); font-size: 28px; font-weight: 700;
+        letter-spacing: 0.32em; text-transform: uppercase;
+      }
+      .title {
+        color: #ffffff; font-size: 78px; font-weight: 800; letter-spacing: -0.03em;
+        line-height: 1.08; max-width: 1500px;
+      }
+      .subtitle { color: rgba(226, 232, 240, 0.78); font-size: 32px; line-height: 1.5; max-width: 1180px; }
+
+      #corner {
+        position: absolute; top: 54px; left: 72px; z-index: 4;
+        display: flex; align-items: center; gap: 14px;
+        opacity: 0.62;
+      }
+      #corner svg { width: 44px; height: 28px; }
+      #corner span { color: #e2e8f0; font-size: 28px; font-weight: 700; letter-spacing: 0.22em; }
+
+      #brand-glow {
+        position: absolute; z-index: 0; width: 620px; height: 620px; border-radius: 50%;
+        background: radial-gradient(circle, color-mix(in srgb, var(--accent, #34d399) 34%, transparent) 0%, transparent 62%);
+        pointer-events: none;
+      }
+      #brand-mark { position: relative; z-index: 3; width: 190px; height: 120px; }
+      #brand-name { position: relative; z-index: 3; margin-top: 34px; font-size: 70px; font-weight: 800; color: #fff; letter-spacing: 0.04em; }
+      #brand-tag { position: relative; z-index: 3; margin-top: 14px; color: var(--accent, #34d399); font-size: 30px; font-weight: 700; letter-spacing: 0.36em; text-transform: uppercase; }
+
+      #scene2 .title { margin-top: 26px; }
+      #scene2 .subtitle { margin-top: 30px; }
+
+      #scene3 { gap: 28px; }
+      .line { display: flex; align-items: center; gap: 22px; font-size: 42px; font-weight: 600; color: rgba(255,255,255,0.92); }
+      .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent, #34d399); box-shadow: 0 0 24px var(--accent, #34d399); }
+
+      #end-mark { width: 96px; height: 60px; margin-bottom: 26px; }
+      #end-title { font-size: 54px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; }
+      #end-sub { margin-top: 16px; color: var(--accent, #34d399); font-size: 30px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; }
+
+      #vignette {
+        position: absolute; inset: 0; pointer-events: none; z-index: 1;
+        background: radial-gradient(1200px 800px at 50% 50%, transparent 55%, rgba(0,0,0,0.45) 100%);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="brand" data-start="0" data-width="1920" data-height="1080" data-duration="12.7">
+      <div id="vignette"></div>
+
+      <div id="corner">
+        <svg viewBox="0 0 100 60" aria-hidden="true">
+          <path d="M6 5 L46 30 L6 55 Z" fill="var(--accent, #34d399)" />
+          <path d="M94 5 L54 30 L94 55 Z" fill="#ffffff" />
+        </svg>
+        <span>GTM-360</span>
+      </div>
+
+      <div id="scene1" class="scene clip" data-start="0" data-duration="3.8" data-track-index="1">
+        <div id="brand-glow"></div>
+        <svg id="brand-mark" viewBox="0 0 100 60" aria-hidden="true">
+          <path d="M6 5 L46 30 L6 55 Z" fill="var(--accent, #34d399)" />
+          <path d="M94 5 L54 30 L94 55 Z" fill="#ffffff" />
+        </svg>
+        <div id="brand-name">GTM-360</div>
+        <div id="brand-tag">Studio</div>
+      </div>
+
+      <div id="scene2" class="scene clip" data-start="3.4" data-duration="3.4" data-track-index="2">
+        <div class="eyebrow">Introducing</div>
+        <div class="title" id="s2-title">Content Radar</div>
+        <div class="subtitle" id="s2-sub">Know where the conversation is going.</div>
+      </div>
+
+      <div id="scene3" class="scene clip" data-start="6.6" data-duration="3.3" data-track-index="3">
+        <div class="line"><span class="dot"></span><span>Signals from the market</span></div>
+        <div class="line"><span class="dot"></span><span>Ranked by relevance</span></div>
+        <div class="line"><span class="dot"></span><span>Delivered as a brief</span></div>
+      </div>
+
+      <div id="scene4" class="scene clip" data-start="9.7" data-duration="3.0" data-track-index="4">
+        <svg id="end-mark" viewBox="0 0 100 60" aria-hidden="true">
+          <path d="M6 5 L46 30 L6 55 Z" fill="var(--accent, #34d399)" />
+          <path d="M94 5 L54 30 L94 55 Z" fill="#ffffff" />
+        </svg>
+        <div id="end-title">Made in Studio</div>
+        <div id="end-sub">gtm-360.com</div>
+      </div>
+    </div>
+
+    <script>
+      gsap.registerPlugin();
+      const vars = window.__hyperframes.getVariables();
+
+      document.documentElement.style.setProperty('--accent', vars.accent || '#34d399');
+      document.getElementById('s2-title').textContent = vars.title || 'Untitled';
+      document.getElementById('s2-sub').textContent = vars.subtitle || '';
+      document.querySelectorAll('#scene3 .line span:last-child').forEach((node, index) => {
+        node.textContent = vars['line' + (index + 1)] || '';
+      });
+
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo('#brand-glow', { scale: 0.72, opacity: 0.2 }, { scale: 1, opacity: 1, duration: 0.9, ease: 'power3.out' }, 0.1);
+      tl.fromTo('#brand-mark', { scale: 0.86, opacity: 0.35 }, { scale: 1, opacity: 1, duration: 0.7, ease: 'power3.out' }, 0.25);
+      tl.fromTo('#brand-name', { y: 18, opacity: 0.2 }, { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }, 0.7);
+      tl.fromTo('#brand-tag', { opacity: 0.2 }, { opacity: 1, duration: 0.6, ease: 'sine.out' }, 1.15);
+      tl.to('#scene1', { opacity: 0, duration: 0.45, ease: 'sine.inOut' }, 3.0);
+
+      tl.fromTo('#scene2 .eyebrow', { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 3.5);
+      tl.fromTo('#s2-title', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out' }, 3.8);
+      tl.fromTo('#s2-sub', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }, 4.3);
+      tl.to('#scene2', { opacity: 0, duration: 0.45, ease: 'sine.inOut' }, 6.3);
+
+      tl.fromTo('#scene3 .line:nth-child(1)', { x: -26, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 6.75);
+      tl.fromTo('#scene3 .line:nth-child(2)', { x: 26, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 7.1);
+      tl.fromTo('#scene3 .line:nth-child(3)', { x: -26, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 7.45);
+      tl.to('#scene3', { opacity: 0, duration: 0.45, ease: 'sine.inOut' }, 9.45);
+
+      tl.fromTo('#end-mark', { scale: 1.08, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: 'power2.out' }, 9.8);
+      tl.fromTo('#end-title', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: 'power3.out' }, 9.95);
+      tl.fromTo('#end-sub', { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'sine.out' }, 10.35);
+
+      window.__timelines['brand'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

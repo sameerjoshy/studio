@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "studio",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/health"]
+  },
+  "vars": {
+    "STUDIO_REPO": "sameerjoshy/studio",
+    "STUDIO_WORKFLOW": "render.yml",
+    "STUDIO_BRANCH": "main",
+    "GEMINI_MODEL": "gemini-2.5-flash",
+    "DEEPSEEK_MODEL": "deepseek-chat"
+  }
+}

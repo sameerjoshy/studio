@@ -1,0 +1,35 @@
+async function request(path, init = {}) {
+  const response = await fetch(path, {
+    credentials: 'same-origin',
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  });
+
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || `Request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+export const api = {
+  session: () => request('/api/session'),
+  auth: (passphrase) =>
+    request('/api/auth', { method: 'POST', body: JSON.stringify({ passphrase }) }),
+  logout: () => request('/api/auth/logout', { method: 'POST' }),
+  capabilities: () => request('/api/capabilities'),
+  chat: (messages) => request('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
+  jobs: () => request('/api/jobs'),
+  job: (id) => request(`/api/jobs/${id}`),
+  retry: (id) => request(`/api/jobs/${id}/retry`, { method: 'POST' }),
+};

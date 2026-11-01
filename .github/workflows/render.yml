@@ -1,0 +1,52 @@
+name: render
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: Studio job id
+        required: true
+        type: string
+
+concurrency:
+  group: studio-${{ inputs.job_id }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache Kokoro models
+        uses: actions/cache@v4
+        with:
+          path: runner/models
+          key: kokoro-models-v1
+
+      - name: Install runner dependencies
+        run: npm install --no-audit --no-fund --prefix runner
+
+      - name: Install Python audio dependencies
+        run: pip install --quiet kokoro-onnx soundfile
+
+      - name: Fetch Kokoro models
+        run: bash runner/scripts/fetch-models.sh
+
+      - name: Run job
+        env:
+          JOB_ID: ${{ inputs.job_id }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KOKORO_MODEL: runner/models/kokoro-v1.0.onnx
+          KOKORO_VOICES: runner/models/voices-v1.0.bin
+        run: node runner/entry.mjs

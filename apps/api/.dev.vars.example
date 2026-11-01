@@ -1,0 +1,7 @@
+STUDIO_PASSPHRASE=choose-a-long-passphrase
+STUDIO_SESSION_SECRET=generate-a-32-byte-random-string
+GITHUB_TOKEN=github_pat_xxx
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=service-role-key
+GEMINI_API_KEY=xxx
+DEEPSEEK_API_KEY=xxx
