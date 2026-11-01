@@ -68,11 +68,17 @@ jobs:
         if: steps.job.outputs.capability == 'voice-xtts'
         run: pip install --quiet TTS
 
+      - name: Install PPT Master dependencies
+        if: steps.job.outputs.capability == 'deck-pptmaster'
+        run: pip install --quiet PyYAML python-pptx XlsxWriter skia-pathops uharfbuzz
+
       - name: Run job
         env:
           JOB_ID: ${{ inputs.job_id }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STUDIO_BASE_URL: ${{ secrets.STUDIO_BASE_URL }}
+          RUNNER_SECRET: ${{ secrets.RUNNER_SECRET }}
           KOKORO_MODEL: runner/models/kokoro-v1.0.onnx
           KOKORO_VOICES: runner/models/voices-v1.0.bin
         run: node runner/entry.mjs

@@ -58,7 +58,9 @@ function buildSystemPrompt(): string {
     spec:
       capability.id === 'deck-native'
         ? '{ "title": string, "subtitle": string, "slides": [{ "title": string, "bullets": string[], "notes": string }] }'
-        : capability.id === 'film-brand'
+        : capability.id === 'deck-pptmaster'
+          ? '{ "brief": string, "slides": number, "audience": string }'
+          : capability.id === 'film-brand'
           ? '{ "title": string, "subtitle": string, "bullets": [string, string, string], "accent": "#RRGGBB" }'
           : capability.id === 'voice-kokoro'
             ? '{ "text": string, "voice": string, "speed": number }'
@@ -124,6 +126,34 @@ async function startJob(
     await updateJob(env, job.id, { status: 'error', error: message });
     await addEvent(env, job.id, `Dispatch failed: ${message}`, 'error', 'error');
     throw error;
+  }
+}
+
+/**
+ * Runner-only model gateway. Keeps every provider key inside the Worker; the
+ * harness authenticates with RUNNER_SECRET instead of holding LLM keys.
+ */
+export async function handleInternalLlm(env: Env, request: Request): Promise<Response> {
+  const body = await readJson<{ system?: string; user?: string; maxTokens?: number }>(request);
+  const system = typeof body?.system === 'string' ? body.system : '';
+  const user = typeof body?.user === 'string' ? body.user : '';
+
+  if (!system || !user) return badRequest('system and user are required');
+  if (system.length > 20_000 || user.length > 40_000) return badRequest('Prompt too large');
+
+  const requested = Number(body?.maxTokens);
+  const maxTokens = Number.isFinite(requested) ? Math.min(4000, Math.max(200, requested)) : 2200;
+
+  try {
+    const result = await callJson(env, { system, user, maxTokens, temperature: 0.2 });
+    return json({
+      data: result.data,
+      provider: result.provider,
+      model: result.model,
+      usage: { tokens_in: result.tokensIn, tokens_out: result.tokensOut, cost_usd: result.costUsd },
+    });
+  } catch (error) {
+    return serverError(error instanceof Error ? error.message : 'Model call failed');
   }
 }
 

@@ -11,6 +11,7 @@ const JOBS = {
   'voice-kokoro': () => import('./jobs/voice-kokoro.mjs'),
   'voice-xtts': () => import('./jobs/voice-xtts.mjs'),
   'deck-native': () => import('./jobs/deck-native.mjs'),
+  'deck-pptmaster': () => import('./jobs/deck-pptmaster.mjs'),
   'film-brand': () => import('./jobs/film-brand.mjs'),
 };
 

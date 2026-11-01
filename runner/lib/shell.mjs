@@ -11,6 +11,14 @@ export function run(command, args, options = {}) {
 
     let stdout = '';
     let stderr = '';
+    let timedOut = false;
+
+    const timer = options.timeoutMs
+      ? setTimeout(() => {
+          timedOut = true;
+          child.kill('SIGKILL');
+        }, options.timeoutMs)
+      : null;
 
     child.stdout.on('data', (chunk) => {
       const text = chunk.toString();
@@ -24,8 +32,17 @@ export function run(command, args, options = {}) {
       options.onStderr?.(text);
     });
 
-    child.on('error', reject);
+    child.on('error', (error) => {
+      if (timer) clearTimeout(timer);
+      reject(error);
+    });
+
     child.on('close', (code) => {
+      if (timer) clearTimeout(timer);
+      if (timedOut) {
+        reject(new Error(`${command} timed out after ${options.timeoutMs} ms`));
+        return;
+      }
       if (code === 0) {
         resolve({ stdout, stderr });
       } else {

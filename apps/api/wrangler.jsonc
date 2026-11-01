@@ -12,6 +12,7 @@
     "run_worker_first": ["/api/*", "/health"]
   },
   "vars": {
+    "STUDIO_BASE_URL": "https://studio.sameerjoshy.workers.dev",
     "STUDIO_REPO": "sameerjoshy/studio",
     "STUDIO_WORKFLOW": "render.yml",
     "STUDIO_BRANCH": "main",

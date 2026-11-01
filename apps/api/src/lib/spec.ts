@@ -62,6 +62,23 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     };
   }
 
+  if (capability.id === 'deck-pptmaster') {
+    const brief = str(input.brief) || str(input.source) || str(input.text);
+    if (!brief) return { ok: false, spec: {}, problem: 'PPT Master needs a brief or source text.' };
+
+    const requested = Number(input.slides);
+    const count = Number.isFinite(requested) ? Math.round(requested) : 6;
+
+    return {
+      ok: true,
+      spec: {
+        brief: brief.slice(0, 6000),
+        slides: Math.min(10, Math.max(3, count)),
+        audience: str(input.audience) || 'business audience',
+      },
+    };
+  }
+
   if (capability.id === 'film-brand') {
     const title = str(input.title);
     const subtitle = str(input.subtitle);

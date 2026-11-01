@@ -9,7 +9,7 @@ import {
   verifySession,
   COOKIE_NAME,
 } from './lib/session';
-import { handleApi } from './router';
+import { handleApi, handleInternalLlm } from './router';
 
 const attempts = new Map<string, { count: number; reset: number }>();
 
@@ -53,6 +53,14 @@ export default {
 
     if (!url.pathname.startsWith('/api/')) {
       return env.ASSETS.fetch(request);
+    }
+
+    if (url.pathname === '/api/internal/llm' && request.method === 'POST') {
+      const provided = request.headers.get('x-runner-secret') ?? '';
+      if (!env.RUNNER_SECRET || !safeEqual(provided, env.RUNNER_SECRET)) {
+        return unauthorized('Bad runner secret');
+      }
+      return handleInternalLlm(env, request);
     }
 
     if (url.pathname === '/api/auth' && request.method === 'POST') {

@@ -7,9 +7,11 @@ export interface Env {
   GEMINI_MODEL: string;
   DEEPSEEK_MODEL: string;
   GROQ_MODEL: string;
+  STUDIO_BASE_URL: string;
 
   STUDIO_PASSPHRASE: string;
   STUDIO_SESSION_SECRET: string;
+  RUNNER_SECRET: string;
   GITHUB_TOKEN: string;
 
   SUPABASE_URL: string;
