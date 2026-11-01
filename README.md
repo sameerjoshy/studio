@@ -1,5 +1,7 @@
 # Studio
 
+Live at **https://studio.sameerjoshy.workers.dev** (passphrase-gated, noindex).
+
 The GTM-360 control room for creative output. One chat box; Studio picks the
 right engine, runs it on free remote compute, and hands back a file.
 

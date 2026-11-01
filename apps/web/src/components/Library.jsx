@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Inbox, MessageSquarePlus } from 'lucide-react';
+import { api } from '../lib/api.js';
 import JobCard from './JobCard.jsx';
 
 const FILTERS = [
@@ -26,6 +27,20 @@ export default function Library({ jobs, capabilities, onOpen, onGoToChat }) {
     }
     return jobs.filter((job) => job.status === filter);
   }, [filter, jobs]);
+
+  useEffect(() => {
+    const missing = jobs.filter((job) => job.status === 'complete' && !job.url).slice(0, 20);
+    for (const job of missing) onOpen?.(job.id);
+  }, [jobs, onOpen]);
+
+  async function retry(id) {
+    try {
+      await api.retry(id);
+      await onOpen?.(id);
+    } catch {
+      /* surfaced by the next poll */
+    }
+  }
 
   return (
     <div className="h-[calc(100vh-57px)] overflow-y-auto md:h-screen">
@@ -70,18 +85,11 @@ export default function Library({ jobs, capabilities, onOpen, onGoToChat }) {
         ) : (
           <div className="space-y-3">
             {filtered.map((job) => (
-              <div
-                key={job.id}
-                onMouseEnter={() => {
-                  if (!job.events && onOpen) onOpen(job.id);
-                }}
-              >
+              <div key={job.id}>
                 <JobCard
                   job={job}
                   capability={capabilityById.get(job.capability)}
-                  onRetry={async () => {
-                    /* handled through the chat surface */
-                  }}
+                  onRetry={retry}
                 />
               </div>
             ))}
