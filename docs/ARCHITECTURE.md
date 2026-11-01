@@ -36,6 +36,24 @@ Adding a job module: default-export an async function that receives
 `{ job, spec, workDir, progress, root }` and returns
 `{ file, filename, contentType, meta }`.
 
+## PPT Master harness
+
+`ppt-master` is a skill, not a CLI: it expects an AI to read its workflow, author
+SVGs, gate them, and export. `runner/lib/harness.mjs` is a bounded pipeline that
+does the same job without a human:
+
+1. Plan the deck (one model call: title, subtitle, content slides)
+2. Author one SVG per page (one call per slide, fixed 1280x720 contract)
+3. Run `svg_quality_checker.py --quick-generate --canonical-authoring --stage final --json`
+4. Repair failing pages from the JSON report (max 2 rounds)
+5. Run `svg_to_pptx.py --quick-generate`
+
+That is 6-8 model calls per deck instead of an open-ended tool loop, which was
+unstable and expensive. Model calls go through `POST /api/internal/llm`, guarded
+by `RUNNER_SECRET`, so provider keys never leave the Worker. If the harness or
+the checker fails, the job falls back to the deterministic Deck Studio so the
+user still gets a file.
+
 ## Auth
 
 A passphrase is exchanged for an HMAC-signed, HttpOnly cookie (30 days).

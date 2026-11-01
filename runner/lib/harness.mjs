@@ -55,7 +55,11 @@ async function callModel({ system, user, maxTokens = 3200, prefer = 'deepseek' }
   }
 
   const payload = await response.json();
-  return { data: payload.data ?? {}, provider: payload.provider ?? 'unknown' };
+  return {
+    data: payload.data ?? {},
+    provider: payload.provider ?? 'unknown',
+    usage: payload.usage ?? { tokens_in: 0, tokens_out: 0, cost_usd: 0 },
+  };
 }
 
 function cleanSvg(value) {
@@ -114,6 +118,7 @@ async function planDeck({ brief, slides, audience }) {
     subtitle: String(plan.subtitle ?? '').trim() || `Prepared for ${audience}`,
     slides: slidesOut,
     provider: result.provider,
+    usage: result.usage,
   };
 }
 
@@ -140,7 +145,7 @@ async function authorSlide({ plan, slide, role, index, total, audience }) {
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const result = await callModel({ system, user: body, maxTokens: 3600 });
     const svg = cleanSvg(result.data?.svg);
-    if (validSvg(svg)) return { svg, provider: result.provider };
+    if (validSvg(svg)) return { svg, provider: result.provider, usage: result.usage };
     if (attempt === 2) throw new Error(`Slide ${index} did not return valid SVG`);
   }
 
@@ -203,6 +208,12 @@ export async function runHarness({ repo, project, brief, slides, audience, progr
   const scripts = path.join(repo, 'skills', 'ppt-master', 'scripts');
   const svgDir = path.join(project, 'svg_output');
   const providers = new Set();
+  const usage = { tokensIn: 0, tokensOut: 0, costUsd: 0 };
+  const addUsage = (value) => {
+    usage.tokensIn += Number(value?.tokens_in ?? 0);
+    usage.tokensOut += Number(value?.tokens_out ?? 0);
+    usage.costUsd += Number(value?.cost_usd ?? 0);
+  };
   let steps = 0;
 
   await mkdir(svgDir, { recursive: true });
@@ -210,6 +221,7 @@ export async function runHarness({ repo, project, brief, slides, audience, progr
   await progress('planning', 12, 'Planning the deck');
   const plan = await planDeck({ brief, slides, audience });
   providers.add(plan.provider);
+  addUsage(plan.usage);
 
   const contentCount = plan.slides.length;
   const total = contentCount + 2;
@@ -235,6 +247,7 @@ export async function runHarness({ repo, project, brief, slides, audience, progr
     });
 
     providers.add(authored.provider);
+    addUsage(authored.usage);
     const name = `P${String(index + 1).padStart(2, '0')}.svg`;
     await writeFile(path.join(svgDir, name), authored.svg, 'utf8');
   }
@@ -283,6 +296,7 @@ export async function runHarness({ repo, project, brief, slides, audience, progr
       if (validSvg(repaired)) {
         await writeFile(target, repaired, 'utf8');
         providers.add(result.provider);
+        addUsage(result.usage);
         steps += 1;
       }
     }
@@ -322,5 +336,6 @@ export async function runHarness({ repo, project, brief, slides, audience, progr
     steps,
     plan,
     total,
+    usage,
   };
 }

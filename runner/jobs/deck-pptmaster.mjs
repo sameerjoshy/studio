@@ -64,7 +64,7 @@ function chunkSentences(brief, count) {
   return slides;
 }
 
-export default async function deckPptmaster({ spec, workDir, progress, root }) {
+export default async function deckPptmaster({ job, spec, workDir, progress }) {
   const brief = String(spec.brief ?? '').trim();
   const slideCount = Math.min(10, Math.max(3, Number(spec.slides) || 6));
   const audience = String(spec.audience ?? 'business audience');
@@ -140,6 +140,7 @@ export default async function deckPptmaster({ spec, workDir, progress, root }) {
         engine: 'ppt-master (fallback: deck-native)',
         harnessError,
         slides: slideCount,
+        cost_usd: Number(job?.meta?.cost_usd ?? 0),
       },
     };
   }
@@ -157,6 +158,9 @@ export default async function deckPptmaster({ spec, workDir, progress, root }) {
       slides: harness?.total ?? slideCount,
       approvedPlan: harness?.plan?.title,
       harnessError,
+      cost_usd: Number(job?.meta?.cost_usd ?? 0) + Number(harness?.usage?.costUsd ?? 0),
+      tokens_in: Number(job?.meta?.tokens_in ?? 0) + Number(harness?.usage?.tokensIn ?? 0),
+      tokens_out: Number(job?.meta?.tokens_out ?? 0) + Number(harness?.usage?.tokensOut ?? 0),
     },
   };
 }
