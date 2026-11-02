@@ -13,6 +13,8 @@ import {
   signedUrl,
   updateJob,
   createSignedUpload,
+  deleteObject,
+  listObjects,
   type Job,
 } from './lib/supabase';
 import { badRequest, json, readJson, serverError } from './lib/http';
@@ -62,7 +64,9 @@ function buildSystemPrompt(): string {
         ? '{ "title": string, "subtitle": string, "slides": [{ "title": string, "bullets": string[], "notes": string }] }'
         : capability.id === 'deck-pptmaster'
           ? '{ "brief": string, "audience": string, "slides"?: number }'
-          : capability.id === 'film-documentary'
+          : capability.id === 'film-cinematic'
+            ? '{ "brief": string, "seconds": number, "tone": string, "aspect"?: "16:9"|"9:16"|"1:1" }'
+            : capability.id === 'film-documentary'
             ? '{ "brief": string, "seconds": number, "tone": string }'
             : capability.id === 'film-explainer'
               ? '{ "brief": string, "seconds": number, "audience": string, "aspect"?: "16:9"|"9:16"|"1:1" }'
@@ -93,6 +97,7 @@ function buildSystemPrompt(): string {
     '- Film: if supporting lines are missing, write three. Never ask for the accent; default to #34D399.',
     '- Film: if the subtitle is missing, write one.',
     '- Documentary: infer duration when the user does not state it (default 30 seconds, max 90). Never ask. Keep queries literal and filmable.',
+    '- Cinematic: real footage with grade, fades, and music. Infer duration when missing (default 30, max 90). Never ask for a provider.',
     '- Explainer: infer duration when the user does not state it (default 30 seconds, max 90). Never ask.',
     '- Aspect: if the user says vertical, Reels, TikTok, or Short, set "aspect": "9:16". For square or LinkedIn, "1:1". Otherwise "16:9".',
     '- Deck: never invent a slide count. If the user gave one, pass it as "slides"; otherwise omit it and let the deck planner infer the length from the brief.',
@@ -482,6 +487,47 @@ export async function handleApi(env: Env, request: Request, url: URL): Promise<R
 
   if (path === '/api/diag/models' && method === 'GET') {
     return json({ models: await listGroqModels(env) });
+  }
+
+  if (path === '/api/music' && method === 'GET') {
+    const objects = await listObjects(env, 'studio-music');
+    const tracks = objects
+      .filter((object) => object.name && !object.name.endsWith('/'))
+      .map((object) => ({
+        name: object.name,
+        size: object.metadata?.size ?? null,
+        created_at: object.created_at,
+      }))
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    return json({ tracks });
+  }
+
+  if (path === '/api/music/presign' && method === 'POST') {
+    const body = await readJson<{ filename?: string; size?: number }>(request);
+    const filename = String(body?.filename ?? '').toLowerCase();
+    const size = Number(body?.size ?? 0);
+    const extension = filename.split('.').pop() ?? '';
+    const allowed = new Set(['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac']);
+
+    if (!allowed.has(extension)) return badRequest('Unsupported audio type');
+    if (!Number.isFinite(size) || size <= 0) return badRequest('Missing file size');
+    if (size > 30 * 1024 * 1024) return badRequest('That track is over the 30 MB limit');
+
+    const name = `${crypto.randomUUID()}-${filename.replace(/[^a-z0-9.-]/g, '-').slice(-60)}`;
+
+    try {
+      const signed = await createSignedUpload(env, name, 'studio-music');
+      return json({ ...signed, name });
+    } catch (error) {
+      return serverError(error instanceof Error ? error.message : 'Could not prepare the upload');
+    }
+  }
+
+  if (path.startsWith('/api/music/') && method === 'DELETE') {
+    const name = decodeURIComponent(path.slice('/api/music/'.length));
+    if (!name || name.includes('/') || name.includes('..')) return badRequest('Invalid track');
+    await deleteObject(env, 'studio-music', name);
+    return json({ ok: true });
   }
 
   if (path === '/api/uploads/presign' && method === 'POST') {

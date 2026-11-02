@@ -142,11 +142,12 @@ export interface SignedUpload {
 export async function createSignedUpload(
   env: Env,
   path: string,
+  bucket = 'studio-sources',
 ): Promise<SignedUpload> {
-  await ensureBucketNamed(env, 'studio-sources');
+  await ensureBucketNamed(env, bucket);
 
   const response = await fetch(
-    `${env.SUPABASE_URL}/storage/v1/object/upload/sign/studio-sources/${path}`,
+    `${env.SUPABASE_URL}/storage/v1/object/upload/sign/${bucket}/${path}`,
     {
       method: 'POST',
       headers: serviceHeaders(env),
@@ -178,14 +179,18 @@ export async function listObjects(
   env: Env,
   bucket: string,
   limit = 1000,
-): Promise<Array<{ name: string; created_at: string }>> {
+): Promise<Array<{ name: string; created_at: string; metadata?: { size?: number } | null }>> {
   const response = await fetch(`${env.SUPABASE_URL}/storage/v1/object/list/${bucket}`, {
     method: 'POST',
     headers: serviceHeaders(env),
     body: JSON.stringify({ prefix: '', limit, offset: 0 }),
   });
   if (!response.ok) return [];
-  return (await response.json()) as Array<{ name: string; created_at: string }>;
+  return (await response.json()) as Array<{
+    name: string;
+    created_at: string;
+    metadata?: { size?: number } | null;
+  }>;
 }
 
 export async function deleteStaleOutputs(env: Env, days = 30): Promise<number> {

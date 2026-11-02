@@ -152,6 +152,24 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     };
   }
 
+  if (capability.id === 'film-cinematic') {
+    const brief = str(input.brief) || str(input.source) || str(input.text);
+    if (!brief) return { ok: false, spec: {}, problem: 'A cinematic film needs a brief.' };
+
+    const requested = Number(input.seconds) || Number(input.duration);
+    const seconds = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : 30;
+
+    return {
+      ok: true,
+      spec: {
+        brief: brief.slice(0, 4000),
+        seconds: Math.min(90, Math.max(15, seconds)),
+        tone: str(input.tone) || 'cinematic',
+        aspect: aspectOf(input),
+      },
+    };
+  }
+
   if (capability.id === 'film-documentary') {
     const brief = str(input.brief) || str(input.source) || str(input.text);
     if (!brief) return { ok: false, spec: {}, problem: 'A documentary needs a brief.' };

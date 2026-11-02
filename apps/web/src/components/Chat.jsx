@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, Command, Paperclip, Sparkles, Upload } from 'lucide-react';
+import { ArrowUp, Command, Music2, Paperclip, Sparkles, Upload } from 'lucide-react';
 import { api } from '../lib/api.js';
 import JobCard from './JobCard.jsx';
+import MusicLibrary from './MusicLibrary.jsx';
 import SourceUpload from './SourceUpload.jsx';
 
 const STORAGE_KEY = 'studio.chat.v1';
@@ -20,6 +21,7 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [showMusic, setShowMusic] = useState(false);
   const bottomRef = useRef(null);
 
   const byId = useMemo(() => {
@@ -114,6 +116,14 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
           >
             <Paperclip className="h-3.5 w-3.5" />
             Upload source
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowMusic(true)}
+            className="btn-ghost !py-1.5 text-xs"
+            aria-label="Music library"
+          >
+            <Music2 className="h-3.5 w-3.5" />
           </button>
           <button type="button" onClick={onOpenCapabilities} className="btn-ghost !py-1.5 text-xs">
             <Sparkles className="h-3.5 w-3.5" />
@@ -239,6 +249,8 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
           </p>
         </div>
       </div>
+
+      {showMusic && <MusicLibrary onClose={() => setShowMusic(false)} />}
 
       {showUpload && (
         <SourceUpload

@@ -36,6 +36,14 @@ export const api = {
     }),
   run: (capability, spec) =>
     request('/api/run', { method: 'POST', body: JSON.stringify({ capability, spec }) }),
+  music: () => request('/api/music'),
+  presignMusic: (filename, size) =>
+    request('/api/music/presign', {
+      method: 'POST',
+      body: JSON.stringify({ filename, size }),
+    }),
+  deleteMusic: (name) =>
+    request(`/api/music/${encodeURIComponent(name)}`, { method: 'DELETE' }),
   chat: (messages) => request('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
   jobs: () => request('/api/jobs'),
   job: (id) => request(`/api/jobs/${id}`),

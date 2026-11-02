@@ -78,6 +78,21 @@ export async function downloadObject(bucket, objectPath, destination) {
   await writeFile(destination, Buffer.from(await response.arrayBuffer()));
 }
 
+export async function listObjects(bucket, limit = 200) {
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/list/${bucket}`, {
+    method: 'POST',
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ prefix: '', limit, offset: 0 }),
+  });
+
+  if (!response.ok) return [];
+  return response.json();
+}
+
 export async function deleteObject(bucket, objectPath) {
   await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
     method: 'DELETE',
