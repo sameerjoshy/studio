@@ -86,7 +86,7 @@ jobs:
         run: pip install --quiet PyYAML python-pptx XlsxWriter skia-pathops uharfbuzz
 
       - name: Install OpenMontage dependencies
-        if: steps.job.outputs.capability == 'film-documentary'
+        if: steps.job.outputs.capability == 'film-documentary' || steps.job.outputs.capability == 'film-cinematic'
         run: pip install --quiet pyyaml "pydantic>=2" jsonschema python-dotenv Pillow numpy requests
 
       - name: Cache Whisper models
