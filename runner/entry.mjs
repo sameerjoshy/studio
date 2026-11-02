@@ -24,6 +24,7 @@ const JOBS = {
   'film-cinematic': () => import('./jobs/film-documentary.mjs'),
   'film-explainer': () => import('./jobs/film-explainer.mjs'),
   'film-motion-graphics': () => import('./jobs/film-explainer.mjs'),
+  'film-character': () => import('./jobs/film-character.mjs'),
   'film-talking-head': () => import('./jobs/source-edit.mjs'),
   'film-clip-factory': () => import('./jobs/source-edit.mjs'),
   'film-podcast': () => import('./jobs/source-edit.mjs'),

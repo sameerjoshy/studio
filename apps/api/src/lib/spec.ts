@@ -152,6 +152,19 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     };
   }
 
+  if (capability.id === 'film-character') {
+    const brief = str(input.brief) || 'The GTM Guardian in a hero shot.';
+    const requested = Number(input.seconds) || 3;
+    return {
+      ok: true,
+      spec: {
+        brief: brief.slice(0, 1000),
+        seconds: Math.min(8, Math.max(2, Math.round(requested))),
+        aspect: aspectOf(input),
+      },
+    };
+  }
+
   if (capability.id === 'film-cinematic') {
     const brief = str(input.brief) || str(input.source) || str(input.text);
     if (!brief) return { ok: false, spec: {}, problem: 'A cinematic film needs a brief.' };

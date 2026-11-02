@@ -64,7 +64,9 @@ function buildSystemPrompt(): string {
         ? '{ "title": string, "subtitle": string, "slides": [{ "title": string, "bullets": string[], "notes": string }] }'
         : capability.id === 'deck-pptmaster'
           ? '{ "brief": string, "audience": string, "slides"?: number }'
-          : capability.id === 'film-cinematic'
+          : capability.id === 'film-character'
+            ? '{ "brief": string, "seconds": number, "aspect"?: "16:9"|"9:16"|"1:1" }'
+            : capability.id === 'film-cinematic'
             ? '{ "brief": string, "seconds": number, "tone": string, "aspect"?: "16:9"|"9:16"|"1:1" }'
             : capability.id === 'film-documentary'
             ? '{ "brief": string, "seconds": number, "tone": string }'
@@ -98,6 +100,7 @@ function buildSystemPrompt(): string {
     '- Film: if the subtitle is missing, write one.',
     '- Documentary: infer duration when the user does not state it (default 30 seconds, max 90). Never ask. Keep queries literal and filmable.',
     '- Cinematic: real footage with grade, fades, and music. Infer duration when missing (default 30, max 90). Never ask for a provider.',
+    '- Character: the GTM Guardian, a stylised 3D hero. Infer duration when missing (default 3 seconds, max 8).',
     '- Explainer: infer duration when the user does not state it (default 30 seconds, max 90). Never ask.',
     '- Aspect: if the user says vertical, Reels, TikTok, or Short, set "aspect": "9:16". For square or LinkedIn, "1:1". Otherwise "16:9".',
     '- Deck: never invent a slide count. If the user gave one, pass it as "slides"; otherwise omit it and let the deck planner infer the length from the brief.',
