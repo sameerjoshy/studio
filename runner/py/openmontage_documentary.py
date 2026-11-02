@@ -21,7 +21,7 @@ from pathlib import Path
 # Wikimedia carries a growing number of AI-generated uploads, often watermarked.
 # The documentary path promises real footage, so reject them by filename.
 AI_MARKERS = re.compile(
-    r"(hailuo|minimax|sora|veo|kling|runway|pika|luma|generated|text-to-video|ai-?generated|cyberpunk)",
+    r"(hailuo|minimax|sora|veo|kling|runway|pika|luma|generated|text-to-video|ai-?generated|cyberpunk|animation|animated)",
     re.IGNORECASE,
 )
 
