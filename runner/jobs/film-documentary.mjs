@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { callModel } from '../lib/model.mjs';
 import { run } from '../lib/shell.mjs';
@@ -9,12 +9,22 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function filenameOf(url) {
+  try {
+    const base = new URL(String(url)).pathname.split('/').pop() ?? '';
+    return decodeURIComponent(base);
+  } catch {
+    return String(url ?? '');
+  }
+}
+
 function normalisePlan(data, seconds, tone) {
   const rawSlots = Array.isArray(data?.slots) ? data.slots : [];
   const fallbackSeconds = Math.round(seconds / Math.max(1, rawSlots.length || 5));
 
   const slots = rawSlots
-    .map((slot) => ({
+    .map((slot, index) => ({
+      slot_id: `slot_${String(index).padStart(2, '0')}`,
       query: String(slot?.query ?? '').trim(),
       seconds: clamp(Number(slot?.seconds) || fallbackSeconds, 3, 8),
       intent: String(slot?.intent ?? '').slice(0, 140),
@@ -31,12 +41,119 @@ function normalisePlan(data, seconds, tone) {
   };
 }
 
+async function runSearch({ repo, python, root, workDir, plan, project, label }) {
+  const planPath = path.join(workDir, `${label}-plan.json`);
+  const outPath = path.join(workDir, `${label}-candidates.json`);
+
+  await writeFile(planPath, JSON.stringify(plan, null, 2), 'utf8');
+
+  await run(
+    python,
+    [
+      path.join(root, 'py', 'openmontage_documentary.py'),
+      '--mode',
+      'search',
+      '--repo',
+      repo,
+      '--plan',
+      planPath,
+      '--out-json',
+      outPath,
+      '--project',
+      project,
+    ],
+    {
+      cwd: root,
+      shell: false,
+      timeoutMs: 900_000,
+      onStderr: (line) => console.log(line.trim()),
+    },
+  );
+
+  const data = JSON.parse(await readFile(outPath, 'utf8'));
+  if (!data.ok) throw new Error(data.error || 'Clip search failed');
+  return data;
+}
+
+async function selectPicks({ brief, slots, providers }) {
+  if (!slots.length) return [];
+
+  const listing = slots.map((slot) => ({
+    slot: slot.slot,
+    query: slot.query,
+    intent: slot.intent,
+    candidates: slot.candidates.map((candidate, index) => ({
+      i: index,
+      file: filenameOf(candidate.source_url),
+      source: candidate.source,
+      seconds: Math.round(candidate.duration),
+      lexical: candidate.relevance,
+    })),
+  }));
+
+  const result = await callModel({
+    system: [
+      'You are selecting B-roll for a documentary.',
+      'For each slot, choose the candidate whose filename best matches the slot query and the brief.',
+      'Choose -1 when no candidate matches; an unrelated shot is worse than a missing one.',
+      'Reject same-word-different-subject traps (a Mars helicopter for a Wright Flyer slot, a wind turbine for a jet engine slot).',
+      'Return JSON only: {"picks":[{"slot":"slot_00","candidate":0,"reason":"one short sentence"}]}',
+    ].join('\n'),
+    user: `BRIEF:\n${brief}\n\nSLOTS AND CANDIDATES:\n${JSON.stringify(listing, null, 2)}`,
+    maxTokens: 1200,
+    prefer: 'groq',
+  });
+
+  providers.push(result.provider);
+
+  const picks = [];
+  const choiceBySlot = new Map();
+  for (const pick of Array.isArray(result.data?.picks) ? result.data.picks : []) {
+    if (pick?.slot) choiceBySlot.set(String(pick.slot), pick);
+  }
+
+  for (const slot of slots) {
+    const choice = choiceBySlot.get(slot.slot);
+    const rejected = choice && Number(choice.candidate) < 0;
+    let candidate = null;
+
+    if (!rejected) {
+      if (choice && Number(choice.candidate) >= 0) {
+        const chosen = slot.candidates[Number(choice.candidate)] ?? null;
+        if (chosen && chosen.relevance > 0) candidate = chosen;
+      }
+      if (!candidate) {
+        candidate = slot.candidates.find((item) => item.relevance > 0) ?? null;
+      }
+    }
+
+    if (!candidate) continue;
+
+    picks.push({
+      slot: slot.slot,
+      query: slot.query,
+      path: candidate.path,
+      source: candidate.source,
+      source_url: candidate.source_url,
+      license: candidate.license,
+      duration: candidate.duration,
+      hold: Math.max(1.5, Math.min(slot.seconds, candidate.duration)),
+      reason: choice?.reason ?? slot.intent,
+    });
+  }
+
+  return picks;
+}
+
 export default async function filmDocumentary({ job, spec, workDir, progress, root }) {
   const brief = String(spec.brief ?? '').trim();
   const seconds = clamp(Number(spec.seconds) || 30, 10, 90);
   const tone = String(spec.tone ?? 'observational');
 
   if (!brief) throw new Error('No brief supplied');
+
+  const providers = [];
+  let costUsd = 0;
 
   await progress('planning', 8, 'Planning the montage');
 
@@ -45,46 +162,108 @@ export default async function filmDocumentary({ job, spec, workDir, progress, ro
       'You are a documentary editor planning a real-footage montage.',
       'Return JSON only: {"title": string, "tone": string, "slots": [{"query": string, "seconds": number, "intent": string}]}',
       'Rules:',
-      '- 4-8 slots whose seconds add up to roughly the requested duration.',
+      '- 6-9 slots whose seconds add up to roughly the requested duration.',
       '- Each query is 2-5 literal, filmable words that a stock or archive search can match (e.g. "rain on city street", "apollo rocket launch", "crowd walking subway").',
       '- Never use abstract phrases, emotions, or brand names.',
       '- intent explains what the shot does for the story, in one short sentence.',
     ].join('\n'),
     user: `BRIEF:\n${brief}\n\nTarget duration: ${seconds} seconds\nTone: ${tone}`,
-    maxTokens: 1200,
+    maxTokens: 1400,
   });
 
+  providers.push(planned.provider);
+  costUsd += Number(planned.usage?.cost_usd ?? 0);
+
   const plan = normalisePlan(planned.data, seconds, tone);
-  const planPath = path.join(workDir, 'plan.json');
-  await writeFile(planPath, JSON.stringify(plan, null, 2), 'utf8');
 
-  await progress('cloning', 15, 'Fetching OpenMontage');
-
-  const repo = path.join(workDir, 'OpenMontage');
-  await run('git', ['clone', '--depth', '1', REPO, repo], { cwd: workDir, shell: false });
-
-  await progress('sourcing', 28, `Sourcing footage for ${plan.slots.length} shots`);
+  const repo = process.env.OPENMONTAGE_REPO_DIR || path.join(workDir, 'OpenMontage');
+  if (!process.env.OPENMONTAGE_REPO_DIR) {
+    await progress('cloning', 14, 'Fetching OpenMontage');
+    await run('git', ['clone', '--depth', '1', REPO, repo], { cwd: workDir, shell: false });
+  }
 
   const python = process.env.PYTHON || 'python3';
+  const projectBase = `studio-${String(job.id).slice(0, 8)}`;
+
+  await progress('sourcing', 24, `Sourcing footage for ${plan.slots.length} shots`);
+
+  const first = await runSearch({
+    repo,
+    python,
+    root,
+    workDir,
+    plan,
+    project: `${projectBase}-a`,
+    label: 'pass1',
+  });
+
+  await progress('selecting', 58, 'Reviewing candidates');
+  let picks = await selectPicks({ brief, slots: first.slots, providers });
+
+  // Second pass: when the strict gate drops shots, retry those slots with the
+  // shortest form of the query, which open-archive search handles much better.
+  const covered = new Set(picks.map((pick) => pick.slot));
+  const uncovered = plan.slots.filter((slot) => !covered.has(slot.slot_id));
+
+  if (uncovered.length && picks.length < plan.slots.length) {
+    await progress('retrying', 66, `Retrying ${uncovered.length} shot(s) with simpler queries`);
+
+    const simplified = uncovered.map((slot) => ({
+      ...slot,
+      query: slot.query.split(/\s+/).slice(0, 2).join(' '),
+    }));
+
+    try {
+      const second = await runSearch({
+        repo,
+        python,
+        root,
+        workDir,
+        plan: { ...plan, slots: simplified },
+        project: `${projectBase}-b`,
+        label: 'pass2',
+      });
+
+      const more = await selectPicks({ brief, slots: second.slots, providers });
+      const seen = new Set(picks.map((pick) => pick.slot));
+      picks = [...picks, ...more.filter((pick) => !seen.has(pick.slot))];
+    } catch (error) {
+      console.log(`second pass skipped: ${error.message}`);
+    }
+  }
+
+  const totalSeconds = picks.reduce((sum, pick) => sum + pick.hold, 0);
+  if (picks.length < 3 || totalSeconds < 8) {
+    throw new Error(
+      `Only ${picks.length} relevant shot(s) found in the open archives. ` +
+        'Add a free Pexels key (PEXELS_API_KEY) or use a more literal, filmable brief.',
+    );
+  }
+
+  const picksPath = path.join(workDir, 'picks.json');
+  await writeFile(picksPath, JSON.stringify({ picks }, null, 2), 'utf8');
+
+  await progress('composing', 80, `Cutting ${picks.length} shots`);
+
   const out = path.join(workDir, 'documentary.mp4');
 
   const result = await run(
     python,
     [
       path.join(root, 'py', 'openmontage_documentary.py'),
+      '--mode',
+      'compose',
       '--repo',
       repo,
-      '--plan',
-      planPath,
+      '--picks',
+      picksPath,
       '--out',
       out,
-      '--project',
-      `studio-${String(job.id).slice(0, 8)}`,
     ],
     {
       cwd: root,
       shell: false,
-      timeoutMs: 1_500_000,
+      timeoutMs: 900_000,
       onStderr: (line) => console.log(line.trim()),
     },
   );
@@ -96,8 +275,7 @@ export default async function filmDocumentary({ job, spec, workDir, progress, ro
   } catch {
     throw new Error(`OpenMontage returned no result: ${result.stdout.slice(-300)}`);
   }
-
-  if (!parsed.ok) throw new Error(parsed.error || 'OpenMontage failed');
+  if (!parsed.ok) throw new Error(parsed.error || 'OpenMontage compose failed');
 
   await progress('finalising', 95, 'Documentary rendered');
 
@@ -114,11 +292,9 @@ export default async function filmDocumentary({ job, spec, workDir, progress, ro
       cuts: parsed.cuts,
       renderedSeconds: parsed.seconds,
       assets: parsed.assets,
-      sources: parsed.sources,
-      providers: [planned.provider],
-      cost_usd: Number(planned.usage?.cost_usd ?? 0),
-      tokens_in: Number(planned.usage?.tokens_in ?? 0),
-      tokens_out: Number(planned.usage?.tokens_out ?? 0),
+      sources: first.sources,
+      providers: [...new Set(providers)],
+      cost_usd: costUsd,
     },
   };
 }

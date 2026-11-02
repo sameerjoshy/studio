@@ -83,6 +83,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           STUDIO_BASE_URL: ${{ secrets.STUDIO_BASE_URL }}
           RUNNER_SECRET: ${{ secrets.RUNNER_SECRET }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
           KOKORO_MODEL: runner/models/kokoro-v1.0.onnx
           KOKORO_VOICES: runner/models/voices-v1.0.bin
         run: node runner/entry.mjs

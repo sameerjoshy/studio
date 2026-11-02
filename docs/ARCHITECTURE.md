@@ -60,10 +60,16 @@ user still gets a file.
 CLIP model:
 
 1. Plan 4-8 literal shot queries with the model
-2. `direct_clip_search` against Wikimedia Commons, NASA, and Archive.org
-3. Rank candidates by query-token relevance, then source quality, then duration
-   (a shot with zero relevance is dropped rather than filled with noise)
-4. `video_compose` with `render_runtime: ffmpeg` trims and concatenates the cut
+2. `direct_clip_search` against every configured free source: Pexels, Pixabay,
+   Coverr, Wikimedia Commons, and NASA
+3. Rank candidates by filename relevance, then source quality, then duration
+4. A model reranker picks one clip per shot and may reject all of them
+5. A second search pass retries dropped shots with a two-word query
+6. `video_compose` with `render_runtime: ffmpeg` trims and concatenates the cut
+
+If fewer than three shots survive, the job fails with a clear message instead of
+shipping an unrelated cut. A free `PEXELS_API_KEY` (Actions secret) is the single
+biggest quality upgrade: it turns open-archive guesswork into real stock footage.
 
 The driver is `runner/py/openmontage_documentary.py`; it prints one JSON result
 line. OpenMontage is cloned per job and kept as an external process, so its

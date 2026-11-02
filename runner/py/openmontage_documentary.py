@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Deterministic OpenMontage documentary driver for the Studio runner.
+"""OpenMontage documentary driver for the Studio runner.
 
-Uses OpenMontage's own tools, on the fast path that needs no CLIP model:
-  direct_clip_search -> pick one clip per slot -> video_compose (ffmpeg)
+Two modes, so the caller can rerank candidates before composing:
 
-Input: a JSON plan {"title", "tone", "slots": [{"query", "seconds", "intent"}]}
-Output: an mp4 at --out, plus a JSON result on the last stdout line.
+  --mode search   direct_clip_search -> candidates.json
+  --mode compose  picks.json        -> final mp4
+
+Uses OpenMontage's own tools on the fast path (no CLIP model).
 """
 
 from __future__ import annotations
@@ -15,7 +16,6 @@ import json
 import os
 import sys
 from pathlib import Path
-
 
 SOURCE_RANK = {
     "pexels": 6,
@@ -31,13 +31,13 @@ SOURCE_RANK = {
 
 STOPWORDS = {
     "the", "and", "with", "for", "from", "into", "over", "under", "that", "this",
-    "city", "life", "people", "video", "footage", "stock", "clip", "real",
+    "video", "footage", "stock", "clip", "real",
 }
 
 
-def fail(message: str, code: int = 1) -> int:
+def fail(message: str) -> int:
     print(json.dumps({"ok": False, "error": message}))
-    return code
+    return 1
 
 
 def tokens(value: str) -> set[str]:
@@ -49,33 +49,23 @@ def relevance(query: str, clip: dict) -> int:
     query_tokens = tokens(query)
     if not query_tokens:
         return 0
-    haystack = " ".join(
-        str(part or "")
-        for part in (clip.get("source_url"), clip.get("source_tags"), clip.get("query"))
-    )
+    # Only the clip's own filename. Including the slot query or provider tags
+    # would make unrelated uploads look relevant.
+    haystack = str(clip.get("source_url") or "")
     return len(query_tokens & tokens(haystack))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--repo", required=True)
-    parser.add_argument("--plan", required=True)
-    parser.add_argument("--out", required=True)
-    parser.add_argument("--project", default="studio-documentary")
-    args = parser.parse_args()
-
-    repo = Path(args.repo).resolve()
-    if not (repo / "tools").is_dir():
-        return fail(f"OpenMontage checkout not found at {repo}")
-
+def load_tools(repo: Path):
     sys.path.insert(0, str(repo))
     os.chdir(repo)
+    from tools.video.direct_clip_search import DirectClipSearch
+    from tools.video.video_compose import VideoCompose
 
-    try:
-        from tools.video.direct_clip_search import DirectClipSearch
-        from tools.video.video_compose import VideoCompose
-    except Exception as exc:  # pragma: no cover - import failure is fatal
-        return fail(f"Could not import OpenMontage tools: {exc}")
+    return DirectClipSearch, VideoCompose
+
+
+def mode_search(args, repo: Path) -> int:
+    DirectClipSearch, _ = load_tools(repo)
 
     plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
     slots = plan.get("slots") or []
@@ -88,7 +78,7 @@ def main() -> int:
     queries = [
         {
             "query": str(slot.get("query") or "").strip(),
-            "slot_id": f"slot_{index:02d}",
+            "slot_id": str(slot.get("slot_id") or f"slot_{index:02d}"),
             "kind": "video",
         }
         for index, slot in enumerate(slots)
@@ -97,16 +87,29 @@ def main() -> int:
     if not queries:
         return fail("Plan has no usable queries")
 
-    print(f"[openmontage] searching {len(queries)} slots", file=sys.stderr)
-
-    configured_sources = [
+    preferred_sources = [
         name.strip()
-        for name in os.environ.get("OPENMONTAGE_SOURCES", "wikimedia,nasa,archive_org").split(",")
+        for name in os.environ.get(
+            "OPENMONTAGE_SOURCES", "pexels,pixabay,coverr,wikimedia,nasa"
+        ).split(",")
         if name.strip()
     ]
 
-    search = DirectClipSearch()
-    search_result = search.execute(
+    # Only ask for sources that are actually configured, otherwise the tool
+    # rejects the whole batch. Adding a free Pexels key upgrades this silently.
+    try:
+        from tools.video.stock_sources import available_sources
+
+        available = {source.name for source in available_sources()}
+    except Exception:
+        available = set()
+
+    configured_sources = [name for name in preferred_sources if name in available] or None
+
+    print(f"[openmontage] searching {len(queries)} slots", file=sys.stderr)
+
+    tool = DirectClipSearch()
+    result = tool.execute(
         {
             "output_dir": str(output_dir),
             "queries": queries,
@@ -114,19 +117,19 @@ def main() -> int:
             "clips_per_query": 3,
             "extract_thumbnails": False,
             "skip_existing": True,
-            "timeout_seconds": 420,
+            "timeout_seconds": 600,
             "filters": {
                 "orientation": "landscape",
                 "min_width": 960,
-                "max_duration": 60,
+                "max_duration": 45,
             },
         }
     )
 
-    if not search_result.success:
-        return fail(f"Clip search failed: {search_result.error}")
+    if not result.success:
+        return fail(f"Clip search failed: {result.error}")
 
-    clips = search_result.data.get("clips", [])
+    clips = result.data.get("clips", [])
     if not clips:
         return fail("Clip search returned no clips")
 
@@ -134,66 +137,97 @@ def main() -> int:
     for clip in clips:
         if clip.get("kind") != "video":
             continue
+        path = Path(str(clip.get("path") or ""))
+        if not path.exists() or float(clip.get("duration") or 0) < 1.5:
+            continue
         by_slot.setdefault(str(clip.get("slot_id")), []).append(clip)
+
+    out_slots = []
+    for index, slot in enumerate(slots):
+        slot_id = str(slot.get("slot_id") or f"slot_{index:02d}")
+        query = str(slot.get("query") or "")
+        candidates = by_slot.get(slot_id, [])
+
+        def score(clip: dict) -> tuple[float, float, float]:
+            return (
+                relevance(query, clip),
+                SOURCE_RANK.get(str(clip.get("source")), 0),
+                float(clip.get("duration") or 0),
+            )
+
+        candidates = sorted(candidates, key=score, reverse=True)[:5]
+
+        out_slots.append(
+            {
+                "slot": slot_id,
+                "query": query,
+                "seconds": float(slot.get("seconds") or 5),
+                "intent": str(slot.get("intent") or ""),
+                "candidates": [
+                    {
+                        "path": str(clip.get("path")),
+                        "source": clip.get("source"),
+                        "source_url": clip.get("source_url"),
+                        "duration": float(clip.get("duration") or 0),
+                        "license": clip.get("license"),
+                        "relevance": relevance(query, clip),
+                    }
+                    for clip in candidates
+                ],
+            }
+        )
+
+    payload = {
+        "ok": True,
+        "title": plan.get("title"),
+        "tone": plan.get("tone"),
+        "sources": result.data.get("resolved_sources", []),
+        "slots": out_slots,
+    }
+    Path(args.out_json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(json.dumps({"ok": True, "candidates": str(args.out_json), "slots": len(out_slots)}))
+    return 0
+
+
+def mode_compose(args, repo: Path) -> int:
+    _, VideoCompose = load_tools(repo)
+
+    payload = json.loads(Path(args.picks).read_text(encoding="utf-8"))
+    picks = payload.get("picks") or []
+    if not picks:
+        return fail("No picks supplied")
 
     cuts = []
     assets = []
 
-    for index, slot in enumerate(slots):
-        slot_id = f"slot_{index:02d}"
-        candidates = by_slot.get(slot_id) or []
-        candidates = [c for c in candidates if Path(str(c.get("path"))).exists()]
-        if not candidates:
+    for pick in picks:
+        path = Path(str(pick.get("path") or ""))
+        if not path.exists():
             continue
-
-        # Rank by query relevance, then source quality, then duration fit.
-        wanted = float(slot.get("seconds") or 5)
-        query = str(slot.get("query") or "")
-        usable = [c for c in candidates if float(c.get("duration") or 0) >= 1.5]
-        if not usable:
-            continue
-
-        def score(clip: dict) -> tuple[float, float, float, float]:
-            hit = relevance(query, clip)
-            duration = float(clip.get("duration") or 0)
-            source_rank = SOURCE_RANK.get(str(clip.get("source")), 0)
-            enough = 1.0 if duration >= wanted else 0.0
-            return (hit, source_rank, enough, min(duration, wanted))
-
-        picked = max(usable, key=score)
-
-        # A clip that matches none of the query words is almost always noise from
-        # an open archive. Drop the slot instead of shipping an unrelated shot.
-        if relevance(query, picked) == 0 and len(slots) > 1:
-            print(f"[openmontage] dropping {slot_id}: no relevant clip", file=sys.stderr)
-            continue
-
-        duration = float(picked.get("duration") or 0)
-        hold = round(min(wanted, duration), 2)
-
+        hold = max(1.5, min(float(pick.get("hold") or 4), float(pick.get("duration") or 4)))
         cuts.append(
             {
-                "source": str(picked.get("path")),
+                "source": str(path),
                 "in_seconds": 0.0,
-                "out_seconds": hold,
-                "reason": str(slot.get("intent") or slot.get("query") or ""),
+                "out_seconds": round(hold, 2),
+                "reason": str(pick.get("reason") or pick.get("query") or ""),
                 "transition": "cut",
             }
         )
         assets.append(
             {
-                "slot": slot_id,
-                "query": slot.get("query"),
-                "source": picked.get("source"),
-                "source_url": picked.get("source_url"),
-                "license": picked.get("license"),
-                "duration": duration,
-                "hold": hold,
+                "slot": pick.get("slot"),
+                "query": pick.get("query"),
+                "source": pick.get("source"),
+                "source_url": pick.get("source_url"),
+                "license": pick.get("license"),
+                "duration": float(pick.get("duration") or 0),
+                "hold": round(hold, 2),
             }
         )
 
     if not cuts:
-        return fail("No usable clips survived review")
+        return fail("No usable picks")
 
     total = round(sum(cut["out_seconds"] for cut in cuts), 2)
     edit_decisions = {
@@ -211,7 +245,7 @@ def main() -> int:
 
     print(f"[openmontage] composing {len(cuts)} cuts ({total}s)", file=sys.stderr)
     compose = VideoCompose()
-    compose_result = compose.execute(
+    result = compose.execute(
         {
             "operation": "compose",
             "edit_decisions": edit_decisions,
@@ -220,10 +254,8 @@ def main() -> int:
             "preset": "medium",
         }
     )
-
-    if not compose_result.success:
-        return fail(f"Compose failed: {compose_result.error}")
-
+    if not result.success:
+        return fail(f"Compose failed: {result.error}")
     if not out_path.exists() or out_path.stat().st_size < 1024:
         return fail("Compose reported success but produced no usable file")
 
@@ -235,11 +267,40 @@ def main() -> int:
                 "cuts": len(cuts),
                 "seconds": total,
                 "assets": assets,
-                "sources": search_result.data.get("resolved_sources", []),
             }
         )
     )
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["search", "compose"], required=True)
+    parser.add_argument("--repo", required=True)
+    parser.add_argument("--project", default="studio-documentary")
+    parser.add_argument("--plan")
+    parser.add_argument("--out-json")
+    parser.add_argument("--picks")
+    parser.add_argument("--out")
+    args = parser.parse_args()
+
+    repo = Path(args.repo).resolve()
+    if not (repo / "tools").is_dir():
+        return fail(f"OpenMontage checkout not found at {repo}")
+
+    try:
+        if args.mode == "search":
+            if not args.plan or not args.out_json:
+                return fail("search needs --plan and --out-json")
+            return mode_search(args, repo)
+        if not args.picks or not args.out:
+            return fail("compose needs --picks and --out")
+        return mode_compose(args, repo)
+    except Exception as exc:  # pragma: no cover
+        import traceback
+
+        print(traceback.format_exc()[-1000:], file=sys.stderr)
+        return fail(f"{type(exc).__name__}: {exc}")
 
 
 if __name__ == "__main__":
