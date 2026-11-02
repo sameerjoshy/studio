@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Source-footage pipelines for the Studio runner.
 
 Stages:
@@ -49,6 +49,55 @@ def probe(path: Path) -> dict:
     has_audio = any(s.get("codec_type") == "audio" for s in data.get("streams") or [])
     has_video = any(s.get("codec_type") == "video" for s in data.get("streams") or [])
     return {"duration": duration, "has_audio": has_audio, "has_video": has_video}
+
+
+def font_file() -> str | None:
+    candidates = [
+        os.environ.get("FONT_FILE"),
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "C:/Windows/Fonts/arial.ttf",
+    ]
+    for candidate in candidates:
+        if candidate and Path(candidate).exists():
+            return candidate
+    return None
+
+
+def make_card(path: Path, title: str, subtitle: str = "", width: int = 1920, height: int = 1080) -> None:
+    from PIL import Image, ImageDraw, ImageFont
+
+    font_path = font_file()
+    title_font = ImageFont.truetype(font_path, 70) if font_path else ImageFont.load_default()
+    sub_font = ImageFont.truetype(font_path, 30) if font_path else ImageFont.load_default()
+
+    image = Image.new("RGB", (width, height), "#0A192F")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle([96, 380, 116, 700], fill="#34D399")
+
+    words = title.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if len(candidate) > 34 and current:
+            lines.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+
+    y = 420
+    for line in lines[:3]:
+        draw.text((150, y), line, font=title_font, fill="#FFFFFF")
+        y += 88
+
+    if subtitle:
+        draw.text((150, y + 20), subtitle, font=sub_font, fill="#94A3B8")
+
+    image.save(path)
 
 
 def srt_time(seconds: float) -> str:
@@ -281,34 +330,33 @@ def render_podcast(source, transcript, work, plan) -> Path:
     seconds = min(float(plan.get("seconds") or 30), max(5.0, duration))
     title = str(plan.get("title") or "Podcast clip").replace(":", " -").replace("'", "")
 
-    if info["has_video"]:
-        video_source = source
-    else:
-        background = work / "podcast-bg.mp4"
-        result = run(
-            [
-                "ffmpeg", "-y", "-v", "error",
-                "-f", "lavfi", "-i", f"color=c=#0A192F:s=1920x1080:d={seconds:.2f}:r=30",
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                str(background),
-            ]
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"background failed: {result.stderr[-300:]}")
-        video_source = background
+    card = work / "podcast-card.png"
+    make_card(card, title, "Podcast clip")
+
+    background = work / "podcast-bg.mp4"
+    result = run(
+        [
+            "ffmpeg", "-y", "-v", "error",
+            "-loop", "1", "-i", str(card),
+            "-t", f"{seconds:.2f}", "-r", "30",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-pix_fmt", "yuv420p",
+            str(background),
+        ]
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"background failed: {result.stderr[-300:]}")
 
     out = work / "output.mp4"
     result = run(
         [
             "ffmpeg", "-y", "-v", "error",
-            "-i", str(video_source),
+            "-i", str(background),
             "-i", str(source),
             "-filter_complex",
             (
-                f"[0:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,"
-                f"drawtext=text='{title}':fontcolor=white:fontsize=52:x=90:y=90[v0];"
-                f"[1:a]showwaves=s=1700x360:mode=cline:colors=#34D399[w];"
-                f"[v0][w]overlay=110:560:format=auto[v]"
+                "[1:a]showwaves=s=1700x360:mode=cline:colors=#34D399[w];"
+                "[0:v][w]overlay=110:560:format=auto[v]"
             ),
             "-map", "[v]",
             "-map", "1:a",
@@ -419,18 +467,20 @@ def render_screen_demo(source, transcript, work, plan) -> Path:
 
 
 def render_hybrid(source, transcript, work, plan) -> Path:
-    title = str(plan.get("title") or "Source clip").replace(":", " -").replace("'", "")
+    title = str(plan.get("title") or "Source clip")
+    card_png = work / "title-card.png"
+    make_card(card_png, title, "GTM-360 - Studio")
+
     card = work / "title-card.mp4"
     result = run(
         [
             "ffmpeg", "-y", "-v", "error",
-            "-f", "lavfi", "-i", "color=c=#0A192F:s=1920x1080:d=3:r=30",
-            "-vf",
-            (
-                f"drawtext=text='{title}':fontcolor=white:fontsize=64:x=(w-text_w)/2:y=(h-text_h)/2,"
-                f"drawtext=text='GTM-360 - Studio':fontcolor=#34D399:fontsize=26:x=(w-text_w)/2:y=h-120"
-            ),
+            "-loop", "1", "-i", str(card_png),
+            "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+            "-t", "3", "-r", "30",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-shortest",
+            "-pix_fmt", "yuv420p",
             str(card),
         ]
     )
@@ -478,8 +528,8 @@ def stage_render(args) -> int:
     work = Path(args.work)
     work.mkdir(parents=True, exist_ok=True)
 
-    transcript = json.loads((work / "transcript.json").read_text(encoding="utf-8"))
-    plan = json.loads(Path(args.plan).read_text(encoding="utf-8")) if args.plan else {}
+    transcript = json.loads((work / "transcript.json").read_text(encoding="utf-8-sig"))
+    plan = json.loads(Path(args.plan).read_text(encoding="utf-8-sig")) if args.plan else {}
 
     renderer = RENDERERS.get(args.kind)
     if renderer is None:

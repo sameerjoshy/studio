@@ -85,7 +85,7 @@ jobs:
 
       - name: Install source-edit dependencies
         if: contains(fromJSON('["film-talking-head","film-clip-factory","film-podcast","film-dub","film-screen-demo","film-hybrid"]'), steps.job.outputs.capability)
-        run: pip install --quiet faster-whisper kokoro-onnx soundfile
+        run: pip install --quiet faster-whisper kokoro-onnx soundfile Pillow
 
       - name: Install XTTS (optional)
         if: steps.job.outputs.capability == 'film-dub'
