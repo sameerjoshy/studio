@@ -27,8 +27,11 @@ AI_MARKERS = re.compile(
 
 SOURCE_RANK = {
     "pexels": 6,
-    "pixabay": 5,
+    "pixabay_video": 5,
     "coverr": 4,
+    "mixkit": 4,
+    "dareful": 3,
+    "videvo": 3,
     "wikimedia": 3,
     "nasa": 2,
     "nara": 1,
@@ -98,7 +101,8 @@ def mode_search(args, repo: Path) -> int:
     preferred_sources = [
         name.strip()
         for name in os.environ.get(
-            "OPENMONTAGE_SOURCES", "pexels,pixabay,coverr,wikimedia,nasa"
+            "OPENMONTAGE_SOURCES",
+            "pexels,pixabay_video,coverr,wikimedia,nasa,nara,pond5_pd,loc",
         ).split(",")
         if name.strip()
     ]

@@ -203,7 +203,7 @@ export const CAPABILITIES: Capability[] = [
       'Trim, normalise, and concat with ffmpeg',
     ],
     limits: [
-      'Open archives only - a free Pexels key would improve stock quality',
+      'Open archives only - a free Pixabay key would improve stock quality',
       'Literal, filmable subjects work best; abstract briefs retrieve noise',
       'AGPL-3.0: modifications must be published if offered as a service',
     ],
