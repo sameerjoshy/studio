@@ -79,6 +79,37 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     return { ok: true, spec };
   }
 
+  const SOURCE_CAPABILITIES = new Set([
+    'film-talking-head',
+    'film-clip-factory',
+    'film-podcast',
+    'film-dub',
+    'film-screen-demo',
+    'film-hybrid',
+  ]);
+
+  if (SOURCE_CAPABILITIES.has(capability.id)) {
+    const sourcePath = str(input.source_path);
+    if (!sourcePath.startsWith('sources/')) {
+      return { ok: false, spec: {}, problem: 'Upload a source file first.' };
+    }
+
+    const requested = Number(input.seconds) || 60;
+    const spec: Record<string, unknown> = {
+      source_path: sourcePath,
+      brief: str(input.brief).slice(0, 2000),
+      seconds: Math.min(180, Math.max(5, Math.round(requested))),
+    };
+
+    if (capability.id === 'film-dub') {
+      spec.language = str(input.language) || 'es';
+      spec.engine = input.engine === 'xtts' ? 'xtts' : 'kokoro';
+      spec.voice = str(input.voice) || 'af_heart';
+    }
+
+    return { ok: true, spec };
+  }
+
   if (capability.id === 'film-explainer' || capability.id === 'film-motion-graphics') {
     const brief = str(input.brief) || str(input.source) || str(input.text);
     if (!brief) return { ok: false, spec: {}, problem: 'This film needs a brief.' };

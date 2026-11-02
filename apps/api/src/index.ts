@@ -1,6 +1,7 @@
 import type { Env } from './env';
 import { json, serverError, unauthorized } from './lib/http';
 import { safeEqual } from './lib/session';
+import { deleteStaleOutputs, deleteStaleSources } from './lib/supabase';
 import { handleApi, handleInternalLlm } from './router';
 
 const GENERATION_PATHS = new Set(['/api/chat', '/api/run']);
@@ -74,5 +75,11 @@ export default {
       const message = error instanceof Error ? error.message : 'Unexpected error';
       return serverError(message);
     }
+  },
+
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      Promise.all([deleteStaleOutputs(env, 30), deleteStaleSources(env, 24)]).catch(() => {}),
+    );
   },
 };

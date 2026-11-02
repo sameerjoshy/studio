@@ -62,6 +62,32 @@ export async function ensureBucket() {
   if (!benign) throw new Error(`Bucket error ${response.status}: ${body.slice(0, 200)}`);
 }
 
+export async function downloadObject(bucket, objectPath, destination) {
+  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Download ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  }
+
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(destination, Buffer.from(await response.arrayBuffer()));
+}
+
+export async function deleteObject(bucket, objectPath) {
+  await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
+    method: 'DELETE',
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+    },
+  });
+}
+
 export async function uploadObject(path, bytes, contentType) {
   const response = await fetch(`${SUPABASE_URL}/storage/v1/object/studio/${path}`, {
     method: 'POST',

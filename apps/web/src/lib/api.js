@@ -29,6 +29,13 @@ async function request(path, init = {}) {
 
 export const api = {
   capabilities: () => request('/api/capabilities'),
+  presignUpload: (filename, size) =>
+    request('/api/uploads/presign', {
+      method: 'POST',
+      body: JSON.stringify({ filename, size }),
+    }),
+  run: (capability, spec) =>
+    request('/api/run', { method: 'POST', body: JSON.stringify({ capability, spec }) }),
   chat: (messages) => request('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
   jobs: () => request('/api/jobs'),
   job: (id) => request(`/api/jobs/${id}`),

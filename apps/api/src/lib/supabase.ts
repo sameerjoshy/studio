@@ -116,11 +116,11 @@ export async function addEvent(
   });
 }
 
-export async function ensureBucket(env: Env): Promise<void> {
+export async function ensureBucketNamed(env: Env, id: string): Promise<void> {
   const response = await fetch(`${env.SUPABASE_URL}/storage/v1/bucket`, {
     method: 'POST',
     headers: serviceHeaders(env),
-    body: JSON.stringify({ id: 'studio', name: 'studio', public: false }),
+    body: JSON.stringify({ id, name: id, public: false }),
   });
   if (!response.ok && response.status !== 400 && response.status !== 409) {
     const body = await response.text();
@@ -128,6 +128,94 @@ export async function ensureBucket(env: Env): Promise<void> {
       throw new Error(`Bucket check failed ${response.status}: ${body.slice(0, 200)}`);
     }
   }
+}
+
+export async function ensureBucket(env: Env): Promise<void> {
+  await ensureBucketNamed(env, 'studio');
+}
+
+export interface SignedUpload {
+  path: string;
+  uploadUrl: string;
+}
+
+export async function createSignedUpload(
+  env: Env,
+  path: string,
+): Promise<SignedUpload> {
+  await ensureBucketNamed(env, 'studio-sources');
+
+  const response = await fetch(
+    `${env.SUPABASE_URL}/storage/v1/object/upload/sign/studio-sources/${path}`,
+    {
+      method: 'POST',
+      headers: serviceHeaders(env),
+      body: JSON.stringify({}),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Signed upload ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  }
+
+  const data = (await response.json()) as { url?: string };
+  if (!data.url) throw new Error('Supabase returned no signed upload URL');
+
+  return {
+    path,
+    uploadUrl: `${env.SUPABASE_URL}/storage/v1${data.url}`,
+  };
+}
+
+export async function deleteObject(env: Env, bucket: string, path: string): Promise<void> {
+  await fetch(`${env.SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
+    method: 'DELETE',
+    headers: serviceHeaders(env),
+  });
+}
+
+export async function listObjects(
+  env: Env,
+  bucket: string,
+  limit = 1000,
+): Promise<Array<{ name: string; created_at: string }>> {
+  const response = await fetch(`${env.SUPABASE_URL}/storage/v1/object/list/${bucket}`, {
+    method: 'POST',
+    headers: serviceHeaders(env),
+    body: JSON.stringify({ prefix: '', limit, offset: 0 }),
+  });
+  if (!response.ok) return [];
+  return (await response.json()) as Array<{ name: string; created_at: string }>;
+}
+
+export async function deleteStaleOutputs(env: Env, days = 30): Promise<number> {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const rows = await sb<Array<{ id: string; output_path: string }>>(
+    env,
+    `/st_jobs?select=id,output_path&output_path=not.is.null&created_at=lt.${cutoff}&limit=200`,
+  );
+
+  let deleted = 0;
+  for (const row of rows ?? []) {
+    await deleteObject(env, 'studio', row.output_path);
+    await updateJob(env, row.id, { output_path: null, output_name: null });
+    deleted += 1;
+  }
+  return deleted;
+}
+
+export async function deleteStaleSources(env: Env, hours = 24): Promise<number> {
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  const objects = await listObjects(env, 'studio-sources');
+  let deleted = 0;
+  for (const object of objects) {
+    const created = Date.parse(object.created_at);
+    if (Number.isFinite(created) && created < cutoff) {
+      await deleteObject(env, 'studio-sources', object.name);
+      deleted += 1;
+    }
+  }
+  return deleted;
 }
 
 export async function signedUrl(env: Env, path: string, expiresIn = 60 * 60 * 24 * 7): Promise<string | null> {

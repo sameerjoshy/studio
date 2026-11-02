@@ -76,6 +76,22 @@ jobs:
         if: steps.job.outputs.capability == 'film-documentary'
         run: pip install --quiet pyyaml "pydantic>=2" jsonschema python-dotenv Pillow numpy requests
 
+      - name: Cache Whisper models
+        if: contains(fromJSON('["film-talking-head","film-clip-factory","film-podcast","film-dub","film-screen-demo","film-hybrid"]'), steps.job.outputs.capability)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-base-v1
+
+      - name: Install source-edit dependencies
+        if: contains(fromJSON('["film-talking-head","film-clip-factory","film-podcast","film-dub","film-screen-demo","film-hybrid"]'), steps.job.outputs.capability)
+        run: pip install --quiet faster-whisper kokoro-onnx soundfile
+
+      - name: Install XTTS (optional)
+        if: steps.job.outputs.capability == 'film-dub'
+        continue-on-error: true
+        run: pip install --quiet TTS
+
       - name: Run job
         env:
           JOB_ID: ${{ inputs.job_id }}

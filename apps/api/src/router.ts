@@ -11,6 +11,7 @@ import {
   listJobs,
   signedUrl,
   updateJob,
+  createSignedUpload,
   type Job,
 } from './lib/supabase';
 import { badRequest, json, readJson, serverError } from './lib/http';
@@ -48,7 +49,7 @@ Rules:
 - Keep "reply" under 40 words unless the user asked for an explanation.`;
 
 function buildSystemPrompt(): string {
-  const manifest = ACTIVE_CAPABILITIES.map((capability) => ({
+  const manifest = ACTIVE_CAPABILITIES.filter((capability) => !capability.requiresSource).map((capability) => ({
     id: capability.id,
     studio: capability.studio,
     name: capability.name,
@@ -337,6 +338,29 @@ export async function handleApi(env: Env, request: Request, url: URL): Promise<R
 
   if (path === '/api/diag/models' && method === 'GET') {
     return json({ models: await listGroqModels(env) });
+  }
+
+  if (path === '/api/uploads/presign' && method === 'POST') {
+    const body = await readJson<{ filename?: string; size?: number }>(request);
+    const filename = String(body?.filename ?? '').toLowerCase();
+    const size = Number(body?.size ?? 0);
+    const MAX_BYTES = 250 * 1024 * 1024;
+
+    const extension = filename.split('.').pop() ?? '';
+    const allowed = new Set(['mp4', 'mov', 'webm', 'mkv', 'mp3', 'wav', 'm4a', 'ogg']);
+    if (!allowed.has(extension)) return badRequest('Unsupported file type');
+    if (!Number.isFinite(size) || size <= 0) return badRequest('Missing file size');
+    if (size > MAX_BYTES) return badRequest('That file is over the 250 MB limit');
+
+    const safe = filename.replace(/[^a-z0-9.-]/g, '-').slice(-60);
+    const path = `sources/${crypto.randomUUID()}-${safe}`;
+
+    try {
+      const signed = await createSignedUpload(env, path);
+      return json({ ...signed, maxBytes: MAX_BYTES });
+    } catch (error) {
+      return serverError(error instanceof Error ? error.message : 'Could not prepare the upload');
+    }
   }
 
   if (path === '/api/chat' && method === 'POST') {

@@ -3,7 +3,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { addEvent, ensureBucket, getJob, updateJob, uploadObject } from './lib/supabase.mjs';
+import {
+  addEvent,
+  deleteObject,
+  ensureBucket,
+  getJob,
+  updateJob,
+  uploadObject,
+} from './lib/supabase.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,6 +23,12 @@ const JOBS = {
   'film-documentary': () => import('./jobs/film-documentary.mjs'),
   'film-explainer': () => import('./jobs/film-explainer.mjs'),
   'film-motion-graphics': () => import('./jobs/film-explainer.mjs'),
+  'film-talking-head': () => import('./jobs/source-edit.mjs'),
+  'film-clip-factory': () => import('./jobs/source-edit.mjs'),
+  'film-podcast': () => import('./jobs/source-edit.mjs'),
+  'film-dub': () => import('./jobs/source-edit.mjs'),
+  'film-screen-demo': () => import('./jobs/source-edit.mjs'),
+  'film-hybrid': () => import('./jobs/source-edit.mjs'),
 };
 
 function cleanName(name) {
@@ -82,6 +95,13 @@ async function main() {
     process.exitCode = 1;
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => {});
+
+    // Sources are working files: delete the upload once the job is done,
+    // whether it succeeded or failed.
+    const sourcePath = job.spec?.source_path;
+    if (sourcePath) {
+      await deleteObject('studio-sources', sourcePath).catch(() => {});
+    }
   }
 }
 

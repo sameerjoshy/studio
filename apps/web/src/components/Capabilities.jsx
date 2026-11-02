@@ -98,7 +98,13 @@ function CapabilityCard({ capability, onUse }) {
             </ol>
           </div>
 
-          {!planned && capability.examples.length > 0 && (
+          {capability.requiresSource && (
+            <div className="rounded-lg border border-mint/20 bg-mint/5 px-3 py-2 text-xs text-mint">
+              Upload a video or audio file to run this pipeline.
+            </div>
+          )}
+
+          {!planned && !capability.requiresSource && capability.examples.length > 0 && (
             <div>
               <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                 Try it

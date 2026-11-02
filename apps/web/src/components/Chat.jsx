@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, Command, Sparkles } from 'lucide-react';
+import { ArrowUp, Command, Paperclip, Sparkles, Upload } from 'lucide-react';
 import { api } from '../lib/api.js';
 import JobCard from './JobCard.jsx';
+import SourceUpload from './SourceUpload.jsx';
 
 const STORAGE_KEY = 'studio.chat.v1';
 
@@ -18,6 +19,7 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
   const [messages, setMessages] = useState(loadMessages);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const bottomRef = useRef(null);
 
   const byId = useMemo(() => {
@@ -104,10 +106,20 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
             Describe an outcome. Studio picks the tool, runs it, returns the file.
           </p>
         </div>
-        <button type="button" onClick={onOpenCapabilities} className="btn-ghost !py-1.5 text-xs">
-          <Sparkles className="h-3.5 w-3.5" />
-          What can it do
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowUpload(true)}
+            className="btn-ghost !py-1.5 text-xs"
+          >
+            <Paperclip className="h-3.5 w-3.5" />
+            Upload source
+          </button>
+          <button type="button" onClick={onOpenCapabilities} className="btn-ghost !py-1.5 text-xs">
+            <Sparkles className="h-3.5 w-3.5" />
+            What can it do
+          </button>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
@@ -140,6 +152,24 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
                   </button>
                 ))}
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowUpload(true)}
+                className="card flex w-full items-center gap-3 p-4 text-left transition hover:border-mint/50"
+              >
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line bg-ink">
+                  <Upload className="h-4 w-4 text-mint" />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    Have footage or audio?
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-500">
+                    Upload it to auto-caption, cut, clip, dub, or repurpose it.
+                  </span>
+                </span>
+              </button>
             </div>
           )}
 
@@ -209,6 +239,18 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
           </p>
         </div>
       </div>
+
+      {showUpload && (
+        <SourceUpload
+          capabilities={capabilities}
+          onClose={() => setShowUpload(false)}
+          onCreated={(job, message) => {
+            setShowUpload(false);
+            setMessages((previous) => [...previous, { role: 'assistant', content: message, jobId: job.id }]);
+            onJob(job);
+          }}
+        />
+      )}
     </div>
   );
 }
