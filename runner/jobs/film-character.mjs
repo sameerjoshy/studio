@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+﻿import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fitAspect } from '../lib/aspect.mjs';
 import { run } from '../lib/shell.mjs';
@@ -30,7 +30,7 @@ export default async function filmCharacter({ spec, workDir, progress, root }) {
       '--fps',
       String(fps),
       '--samples',
-      String(Number(process.env.BLENDER_SAMPLES) || 16),
+      String(Number(process.env.BLENDER_SAMPLES) || 32),
       '--resolution',
       '1280x720',
     ],

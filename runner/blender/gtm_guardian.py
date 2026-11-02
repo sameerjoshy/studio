@@ -113,8 +113,8 @@ def build_hero(root):
     parts = []
 
     # ---- torso ----
-    torso = cube("torso", (0, 0, 1.14), (0.40, 0.24, 0.58), navy, bevel=0.10)
-    chest = cube("chest", (0, -0.20, 1.24), (0.30, 0.06, 0.30), teal, bevel=0.05)
+    torso = sphere("torso", (0, 0, 1.14), 0.30, navy, scale=(1.15, 0.78, 1.35))
+    chest = cube("chest", (0, -0.20, 1.24), (0.26, 0.05, 0.24), teal, bevel=0.05)
     belt = torus("belt", (0, 0, 0.88), 0.215, 0.035, dark, scale=(1, 0.66, 1))
     buckle = cube("buckle", (0, -0.155, 0.88), (0.07, 0.03, 0.05), gold, bevel=0.01)
     parts.extend([torso, chest, belt, buckle])
@@ -123,10 +123,10 @@ def build_hero(root):
     for side in (-1, 1):
         hip = sphere(f"hip_{side}", (side * 0.13, 0, 0.92), 0.105, navy_light)
         thigh = cyl_between(f"thigh_{side}", (side * 0.13, 0, 0.90), (side * 0.14, 0, 0.54), 0.085, navy)
-        knee = sphere(f"knee_{side}", (side * 0.14, 0, 0.54), 0.085, navy_light)
+
         shin = cyl_between(f"shin_{side}", (side * 0.14, 0, 0.52), (side * 0.14, 0, 0.16), 0.072, navy)
         boot = cube(f"boot_{side}", (side * 0.14, -0.045, 0.07), (0.17, 0.30, 0.12), dark, bevel=0.03)
-        parts.extend([hip, thigh, knee, shin, boot])
+        parts.extend([hip, thigh, shin, boot])
 
     # ---- arms ----
     for side in (-1, 1):
@@ -174,17 +174,17 @@ def build_hero(root):
     )
     cape = bpy.context.object
     cape.name = "cape"
-    cape.scale = (0.62, 1.18, 1)
+    cape.scale = (0.82, 1.30, 1)
     cape.data.materials.append(teal)
 
     subsurf = cape.modifiers.new("Subsurf", "SUBSURF")
     subsurf.levels = 2
     subsurf.render_levels = 2
 
-    bend = cape.modifiers.new("Bend", "SIMPLE_DEFORM")
+    bend = cape.modifiers.new("Bend", "SIMPLE_DEFORM")  # mild flare, not a wrap
     bend.deform_method = "BEND"
     bend.deform_axis = "Z"
-    bend.angle = math.radians(38)
+    bend.angle = math.radians(10)
 
     cape_collar = cyl_between("cape_collar", (-0.22, 0.14, 1.44), (0.22, 0.14, 1.44), 0.05, teal)
 
@@ -247,11 +247,11 @@ def setup_scene(args):
     rim.rotation_euler = (math.radians(118), 0, 0)
 
     # Camera: low, close hero angle
-    bpy.ops.object.camera_add(location=(1.8, -3.9, 1.55))
+    bpy.ops.object.camera_add(location=(2.1, -4.6, 1.55))
     camera = bpy.context.object
     camera.data.lens = 58
     scene.camera = camera
-    direction = Vector((0, 0, 1.08)) - camera.location
+    direction = Vector((0, 0, 1.02)) - camera.location
     camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
     return camera
@@ -273,11 +273,11 @@ def animate(root, cape, camera, seconds, fps):
         cape.rotation_euler.y = math.radians(2.5) * math.sin(t * math.pi * 4)
         cape.keyframe_insert(data_path="rotation_euler", frame=frame)
 
-    camera.location = (2.0, -4.3, 1.62)
+    camera.location = (2.25, -4.9, 1.62)
     camera.keyframe_insert(data_path="location", frame=1)
-    camera.location = (1.75, -3.8, 1.53)
+    camera.location = (2.0, -4.4, 1.53)
     camera.keyframe_insert(data_path="location", frame=frames)
-    direction = Vector((0, 0, 1.08)) - Vector((1.75, -3.8, 1.53))
+    direction = Vector((0, 0, 1.02)) - Vector((2.0, -4.4, 1.53))
     camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
     camera.keyframe_insert(data_path="rotation_euler", frame=frames)
 
