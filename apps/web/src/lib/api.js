@@ -40,4 +40,9 @@ export const api = {
   jobs: () => request('/api/jobs'),
   job: (id) => request(`/api/jobs/${id}`),
   retry: (id) => request(`/api/jobs/${id}/retry`, { method: 'POST' }),
+  rerender: (id, overrides) =>
+    request(`/api/jobs/${id}/rerender`, {
+      method: 'POST',
+      body: JSON.stringify({ overrides }),
+    }),
 };

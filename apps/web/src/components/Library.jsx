@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Inbox, MessageSquarePlus } from 'lucide-react';
+import { Inbox, MessageSquarePlus, PencilRuler } from 'lucide-react';
 import { api } from '../lib/api.js';
 import JobCard from './JobCard.jsx';
+import RerenderModal from './RerenderModal.jsx';
+
+const RERENDERABLE = new Set(['deck-native', 'film-brand']);
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -11,8 +14,9 @@ const FILTERS = [
   { id: 'error', label: 'Failed' },
 ];
 
-export default function Library({ jobs, capabilities, onOpen, onGoToChat }) {
+export default function Library({ jobs, capabilities, onOpen, onGoToChat, onCreated }) {
   const [filter, setFilter] = useState('all');
+  const [editing, setEditing] = useState(null);
 
   const capabilityById = useMemo(() => {
     const map = new Map();
@@ -85,17 +89,39 @@ export default function Library({ jobs, capabilities, onOpen, onGoToChat }) {
         ) : (
           <div className="space-y-3">
             {filtered.map((job) => (
-              <div key={job.id}>
+              <div key={job.id} className="space-y-2">
                 <JobCard
                   job={job}
                   capability={capabilityById.get(job.capability)}
                   onRetry={retry}
                 />
+                {RERENDERABLE.has(job.capability) && job.status === 'complete' && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(job)}
+                    className="btn-ghost !py-1.5 text-xs"
+                  >
+                    <PencilRuler className="h-3.5 w-3.5" />
+                    Edit &amp; re-render
+                  </button>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {editing && (
+        <RerenderModal
+          job={editing}
+          capability={capabilityById.get(editing.capability)}
+          onClose={() => setEditing(null)}
+          onCreated={(job) => {
+            setEditing(null);
+            onCreated?.(job);
+          }}
+        />
+      )}
     </div>
   );
 }

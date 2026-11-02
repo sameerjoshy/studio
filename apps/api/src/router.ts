@@ -71,7 +71,7 @@ function buildSystemPrompt(): string {
             : capability.id === 'film-brand'
           ? '{ "title": string, "subtitle": string, "bullets": [string, string, string], "accent": "#RRGGBB", "aspect"?: "16:9"|"9:16"|"1:1" }'
           : capability.id === 'voice-kokoro'
-            ? '{ "text": string, "voice": string, "speed": number }'
+            ? '{ "text": string, "voice": string, "speed": number, "engine"?: "kokoro"|"edge" }'
             : capability.id === 'voice-xtts'
               ? '{ "text": string, "reference_url": string, "language": string }'
               : '{}',
@@ -97,7 +97,7 @@ function buildSystemPrompt(): string {
     '- Aspect: if the user says vertical, Reels, TikTok, or Short, set "aspect": "9:16". For square or LinkedIn, "1:1". Otherwise "16:9".',
     '- Deck: never invent a slide count. If the user gave one, pass it as "slides"; otherwise omit it and let the deck planner infer the length from the brief.',
     '- Deck: if the audience is missing, infer it, otherwise assume a business audience.',
-    '- Narration: if the voice is missing, use a warm neutral voice.',
+    '- Narration: if the voice is missing, use a warm neutral voice. Use engine "edge" only when the user asks for it; otherwise "kokoro".',
     'Only choose "ask" when the subject itself is unknown (for example, an empty or meaningless brief).',
     '',
     ROUTER_SCHEMA,
@@ -407,6 +407,38 @@ async function handleGetJob(env: Env, id: string): Promise<Response> {
   return json({ job, events, url });
 }
 
+const RERENDERABLE = new Set(['deck-native', 'film-brand']);
+
+async function handleRerender(env: Env, id: string, request: Request): Promise<Response> {
+  const job = await getJob(env, id);
+  if (!job) return json({ error: 'Job not found' }, 404);
+  if (!RERENDERABLE.has(job.capability)) {
+    return badRequest('This job does not support edit and re-render yet');
+  }
+
+  const capability = getCapability(job.capability);
+  if (!capability) return badRequest('Capability no longer exists');
+
+  const body = await readJson<{ overrides?: Record<string, unknown> }>(request);
+  const overrides = body?.overrides && typeof body.overrides === 'object' ? body.overrides : {};
+  const merged = { ...(job.spec as Record<string, unknown>), ...overrides };
+
+  const validation = validateSpec(capability, merged);
+  if (!validation.ok) return badRequest(validation.problem ?? 'Invalid edit');
+
+  try {
+    const gated = await gateCopy(env, capability, validation.spec);
+    const next = await startJob(env, capability, gated.spec, {
+      source: 'rerender',
+      parent_job_id: id,
+      slop: gated.slop,
+    });
+    return json({ job: next }, 201);
+  } catch (error) {
+    return serverError(error instanceof Error ? error.message : 'Could not re-render');
+  }
+}
+
 async function handleRetry(env: Env, id: string): Promise<Response> {
   const job = await getJob(env, id);
   if (!job) return json({ error: 'Job not found' }, 404);
@@ -491,6 +523,11 @@ export async function handleApi(env: Env, request: Request, url: URL): Promise<R
   const retryMatch = path.match(/^\/api\/jobs\/([0-9a-f-]{36})\/retry$/i);
   if (retryMatch && method === 'POST') {
     return handleRetry(env, retryMatch[1]!);
+  }
+
+  const rerenderMatch = path.match(/^\/api\/jobs\/([0-9a-f-]{36})\/rerender$/i);
+  if (rerenderMatch && method === 'POST') {
+    return handleRerender(env, rerenderMatch[1]!, request);
   }
 
   const jobMatch = path.match(/^\/api\/jobs\/([0-9a-f-]{36})$/i);

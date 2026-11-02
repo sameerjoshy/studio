@@ -191,12 +191,23 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     const text = str(input.text);
     if (!text) return { ok: false, spec: {}, problem: 'Narration needs a script.' };
     const speed = Number(input.speed);
+    const engine = input.engine === 'edge' ? 'edge' : 'kokoro';
+    const requested = str(input.voice);
+
+    const voice =
+      engine === 'edge'
+        ? /^[a-z]{2}-[A-Z]{2}-\w+Neural$/.test(requested)
+          ? requested
+          : 'en-US-ChristopherNeural'
+        : normaliseVoice(requested);
+
     return {
       ok: true,
       spec: {
         text: text.slice(0, 3000),
-        voice: str(input.voice) || 'af_heart',
+        voice,
         speed: Number.isFinite(speed) ? Math.min(1.5, Math.max(0.5, speed)) : 1,
+        engine,
       },
     };
   }

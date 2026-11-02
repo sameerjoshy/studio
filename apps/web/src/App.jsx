@@ -39,7 +39,13 @@ export default function App() {
       )}
       {tab === 'capabilities' && <Capabilities capabilities={capabilities} onUse={usePrompt} />}
       {tab === 'library' && (
-        <Library jobs={jobs} capabilities={capabilities} onOpen={fetchDetail} onGoToChat={usePrompt} />
+        <Library
+          jobs={jobs}
+          capabilities={capabilities}
+          onOpen={fetchDetail}
+          onGoToChat={usePrompt}
+          onCreated={addJob}
+        />
       )}
     </Shell>
   );

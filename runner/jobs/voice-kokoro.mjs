@@ -7,7 +7,15 @@ export default async function voiceKokoro({ spec, workDir, progress, root }) {
   const text = String(spec.text ?? '').trim();
   if (!text) throw new Error('No script supplied');
 
-  const voice = /^[a-z]{2}_[a-z0-9_]+$/i.test(String(spec.voice ?? '')) ? spec.voice : 'af_heart';
+  const engine = spec.engine === 'edge' ? 'edge' : 'kokoro';
+  const voice =
+    engine === 'edge'
+      ? /^[a-z]{2}-[A-Z]{2}-\w+Neural$/.test(String(spec.voice ?? ''))
+        ? String(spec.voice)
+        : 'en-US-ChristopherNeural'
+      : /^[a-z]{2}_[a-z0-9_]+$/i.test(String(spec.voice ?? ''))
+        ? String(spec.voice)
+        : 'af_heart';
   const speed = Math.min(1.5, Math.max(0.5, Number(spec.speed) || 1));
 
   const model = process.env.KOKORO_MODEL || path.join(root, 'models', 'kokoro-v1.0.onnx');
@@ -16,30 +24,53 @@ export default async function voiceKokoro({ spec, workDir, progress, root }) {
 
   const out = path.join(workDir, 'narration.wav');
 
-  await progress('synthesising', 25, `Synthesising ${Math.min(text.length, MAX_CHARS)} characters with ${voice}`);
-
-  await run(
-    python,
-    [
-      path.join(root, 'py', 'kokoro_tts.py'),
-      '--text',
-      text.slice(0, MAX_CHARS),
-      '--voice',
-      voice,
-      '--speed',
-      String(speed),
-      '--model',
-      model,
-      '--voices',
-      voices,
-      '--out',
-      out,
-    ],
-    {
-      onStdout: (line) => console.log(line.trim()),
-      onStderr: (line) => console.log(line.trim()),
-    },
+  await progress(
+    'synthesising',
+    25,
+    `Synthesising ${Math.min(text.length, MAX_CHARS)} characters with ${engine}`,
   );
+
+  if (engine === 'edge') {
+    await run(
+      python,
+      [
+        path.join(root, 'py', 'edge_tts_run.py'),
+        '--text',
+        text.slice(0, MAX_CHARS),
+        '--voice',
+        voice,
+        '--out',
+        out,
+      ],
+      {
+        onStdout: (line) => console.log(line.trim()),
+        onStderr: (line) => console.log(line.trim()),
+      },
+    );
+  } else {
+    await run(
+      python,
+      [
+        path.join(root, 'py', 'kokoro_tts.py'),
+        '--text',
+        text.slice(0, MAX_CHARS),
+        '--voice',
+        voice,
+        '--speed',
+        String(speed),
+        '--model',
+        model,
+        '--voices',
+        voices,
+        '--out',
+        out,
+      ],
+      {
+        onStdout: (line) => console.log(line.trim()),
+        onStderr: (line) => console.log(line.trim()),
+      },
+    );
+  }
 
   await progress('encoding', 85, 'Audio written');
 

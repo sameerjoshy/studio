@@ -292,11 +292,11 @@ export const CAPABILITIES: Capability[] = [
       'Drafting narration before a studio recording',
       'Quick audio for slides and docs',
     ],
-    inputs: ['Script', 'Voice', 'Speed'],
+    inputs: ['Script', 'Voice', 'Speed', 'Engine (kokoro or edge)'],
     examples: [
       'Narrate this script in a warm male voice: ...',
       'Read this in a clear, neutral voice for a product demo',
-      'Give me a British female voice for this 60-word script',
+      'Use Edge TTS for this British female script',
     ],
     estTime: '30-90 seconds',
     cost: 'Free',
@@ -307,7 +307,11 @@ export const CAPABILITIES: Capability[] = [
       'Synthesise with Kokoro ONNX',
       'Write a 24 kHz WAV',
     ],
-    limits: ['English-first voice set', 'No voice cloning in this capability'],
+    limits: [
+      'English-first voice set',
+      'No voice cloning in this capability',
+      'Edge TTS is an unofficial Microsoft endpoint and may change without notice',
+    ],
   },
   {
     id: 'voice-xtts',
