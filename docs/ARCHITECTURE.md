@@ -98,18 +98,35 @@ brief actually states.
 | animation | Motion Graphics | beta | shares the explainer engine |
 | cinematic | Cinematic | planned | AI video provider keys |
 | avatar-spokesperson | Avatar Spokesperson | planned | avatar provider key |
-| talking-head | Talking Head | planned | source upload |
-| clip-factory | Clip Factory | planned | source upload |
-| localization-dub | Localization Dub | planned | source upload |
-| podcast-repurpose | Podcast Repurpose | planned | audio upload |
-| screen-demo | Screen Demo | planned | screen-recording upload |
-| hybrid | Hybrid | planned | source upload |
+| talking-head | Talking Head | beta | none |
+| clip-factory | Clip Factory | beta | none |
+| localization-dub | Localization Dub | beta | none |
+| podcast-repurpose | Podcast Repurpose | beta | none |
+| screen-demo | Screen Demo | beta | none |
+| hybrid | Hybrid | beta | none |
 | character-animation | Character Animation | planned | rig authoring pass |
 
 `framework-smoke` is a test fixture, not a product pipeline.
 
-The highest-leverage next feature is **source upload** (Supabase Storage plus a
-signed URL into the runner): it unlocks six pipelines at once.
+## Source uploads
+
+The six source pipelines share one input path:
+
+1. `POST /api/uploads/presign` validates the file (250 MB cap, video/audio
+   types) and returns a Supabase signed upload URL.
+2. The browser PUTs the file straight to Supabase. The file never passes through
+   the Worker, so the plan's request-size limit does not apply.
+3. `st_jobs.spec.source_path` carries the object key.
+4. The runner downloads it with the service key, and deletes it in a `finally`
+   block whether the job succeeds or fails.
+5. A daily cron removes outputs older than 30 days and any orphaned source older
+   than 24 hours.
+
+All six jobs run `runner/jobs/source-edit.mjs`: faster-whisper transcribes on the
+runner's CPU (no API key), the model picks moments or translates when needed, and
+mode-specific ffmpeg work renders the cut. Dubbing supports Kokoro (Apache-2.0)
+and XTTS (non-commercial); the workflow installs only the engine the job asks
+for, because the two have conflicting NumPy requirements.
 
 ## Access
 

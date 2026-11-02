@@ -6,6 +6,9 @@ follow the output.
 | Engine | Licence | What it means for you |
 |---|---|---|
 | Kokoro-82M | Apache-2.0 | Commercial use allowed. No voice cloning. |
+| faster-whisper | MIT | Local transcription. Whisper model weights are MIT. |
+| Pillow | HPND | Image composition for title cards. |
+| FFmpeg | LGPL/GPL depending on build | GitHub's runner build is GPL; check before redistributing a bundled binary. |
 | XTTS v2 (Coqui) | Coqui Public Model License 1.0.0 | **Non-commercial only.** Output may not be used in revenue-generating work. Coqui is closed, so no commercial licence is available. |
 | HyperFrames | Renderer CLI | Check the package licence before redistributing the renderer. |
 | pptxgenjs | MIT | Commercial use allowed. |
