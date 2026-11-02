@@ -79,6 +79,41 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     return { ok: true, spec };
   }
 
+  if (capability.id === 'film-explainer' || capability.id === 'film-motion-graphics') {
+    const brief = str(input.brief) || str(input.source) || str(input.text);
+    if (!brief) return { ok: false, spec: {}, problem: 'This film needs a brief.' };
+
+    const requested = Number(input.seconds) || Number(input.duration);
+    const seconds = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : 30;
+
+    return {
+      ok: true,
+      spec: {
+        brief: brief.slice(0, 4000),
+        seconds: Math.min(90, Math.max(12, seconds)),
+        audience: str(input.audience) || 'business audience',
+        ...(capability.id === 'film-motion-graphics' ? { theme: 'flat-motion-graphics' } : {}),
+      },
+    };
+  }
+
+  if (capability.id === 'film-explainer') {
+    const brief = str(input.brief) || str(input.source) || str(input.text);
+    if (!brief) return { ok: false, spec: {}, problem: 'An explainer needs a brief.' };
+
+    const requested = Number(input.seconds) || Number(input.duration);
+    const seconds = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : 30;
+
+    return {
+      ok: true,
+      spec: {
+        brief: brief.slice(0, 4000),
+        seconds: Math.min(90, Math.max(12, seconds)),
+        audience: str(input.audience) || 'business audience',
+      },
+    };
+  }
+
   if (capability.id === 'film-documentary') {
     const brief = str(input.brief) || str(input.source) || str(input.text);
     if (!brief) return { ok: false, spec: {}, problem: 'A documentary needs a brief.' };

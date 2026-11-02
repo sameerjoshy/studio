@@ -62,6 +62,10 @@ function buildSystemPrompt(): string {
           ? '{ "brief": string, "audience": string, "slides"?: number }'
           : capability.id === 'film-documentary'
             ? '{ "brief": string, "seconds": number, "tone": string }'
+            : capability.id === 'film-explainer'
+              ? '{ "brief": string, "seconds": number, "audience": string }'
+              : capability.id === 'film-motion-graphics'
+                ? '{ "brief": string, "seconds": number, "audience": string }'
             : capability.id === 'film-brand'
           ? '{ "title": string, "subtitle": string, "bullets": [string, string, string], "accent": "#RRGGBB" }'
           : capability.id === 'voice-kokoro'
@@ -86,6 +90,7 @@ function buildSystemPrompt(): string {
     '- Film: if supporting lines are missing, write three. Never ask for the accent; default to #34D399.',
     '- Film: if the subtitle is missing, write one.',
     '- Documentary: infer duration when the user does not state it (default 30 seconds, max 90). Never ask. Keep queries literal and filmable.',
+    '- Explainer: infer duration when the user does not state it (default 30 seconds, max 90). Never ask.',
     '- Deck: never invent a slide count. If the user gave one, pass it as "slides"; otherwise omit it and let the deck planner infer the length from the brief.',
     '- Deck: if the audience is missing, infer it, otherwise assume a business audience.',
     '- Narration: if the voice is missing, use a warm neutral voice.',

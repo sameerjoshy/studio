@@ -14,6 +14,8 @@ const JOBS = {
   'deck-pptmaster': () => import('./jobs/deck-pptmaster.mjs'),
   'film-brand': () => import('./jobs/film-brand.mjs'),
   'film-documentary': () => import('./jobs/film-documentary.mjs'),
+  'film-explainer': () => import('./jobs/film-explainer.mjs'),
+  'film-motion-graphics': () => import('./jobs/film-explainer.mjs'),
 };
 
 function cleanName(name) {
