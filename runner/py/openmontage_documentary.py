@@ -14,8 +14,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
+
+# Wikimedia carries a growing number of AI-generated uploads, often watermarked.
+# The documentary path promises real footage, so reject them by filename.
+AI_MARKERS = re.compile(
+    r"(hailuo|minimax|sora|veo|kling|runway|pika|luma|generated|text-to-video|ai-?generated|cyberpunk)",
+    re.IGNORECASE,
+)
 
 SOURCE_RANK = {
     "pexels": 6,
@@ -136,6 +144,8 @@ def mode_search(args, repo: Path) -> int:
     by_slot: dict[str, list[dict]] = {}
     for clip in clips:
         if clip.get("kind") != "video":
+            continue
+        if AI_MARKERS.search(str(clip.get("source_url") or "")):
             continue
         path = Path(str(clip.get("path") or ""))
         if not path.exists() or float(clip.get("duration") or 0) < 1.5:
