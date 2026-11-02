@@ -120,7 +120,11 @@ def mode_search(args, repo: Path) -> int:
 
     configured_sources = [name for name in preferred_sources if name in available] or None
 
-    print(f"[openmontage] searching {len(queries)} slots", file=sys.stderr)
+    print(
+        f"[openmontage] searching {len(queries)} slots "
+        f"available={sorted(available)} configured={configured_sources}",
+        file=sys.stderr,
+    )
 
     tool = DirectClipSearch()
     result = tool.execute(
@@ -145,7 +149,12 @@ def mode_search(args, repo: Path) -> int:
 
     clips = result.data.get("clips", [])
     if not clips:
-        return fail("Clip search returned no clips")
+        errors = result.data.get("errors") or []
+        counts = result.data.get("per_source_counts") or {}
+        return fail(
+            f"Clip search returned no clips (counts={counts}, "
+            f"errors={errors[:3]}, configured={configured_sources})"
+        )
 
     by_slot: dict[str, list[dict]] = {}
     for clip in clips:
