@@ -413,6 +413,20 @@ def render_dub(source, transcript, work, plan) -> Path:
     if not text:
         raise RuntimeError("No translated text supplied")
 
+    if plan.get("engine") == "xtts" and not plan.get("reference"):
+        reference = work / "reference.wav"
+        extracted = run(
+            [
+                "ffmpeg", "-y", "-v", "error",
+                "-ss", "2", "-t", "10",
+                "-i", str(source),
+                "-vn", "-ac", "1", "-ar", "22050",
+                str(reference),
+            ]
+        )
+        if extracted.returncode == 0 and reference.exists():
+            plan["reference"] = str(reference)
+
     audio = synthesize_dub(text, work, plan)
     out = work / "output.mp4"
 

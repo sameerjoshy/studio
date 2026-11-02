@@ -40,33 +40,46 @@ jobs:
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             | jq -r '.[0].capability // ""')
+          engine=$(curl -sSf \
+            "$SUPABASE_URL/rest/v1/st_jobs?id=eq.$JOB_ID&select=spec" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            | jq -r '.[0].spec.engine // ""')
           echo "capability=$capability" >> "$GITHUB_OUTPUT"
-          echo "Job capability: $capability"
+          echo "engine=$engine" >> "$GITHUB_OUTPUT"
+          echo "Job capability: $capability (engine: ${engine:-default})"
 
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
 
+      - name: Install runner dependencies
+        run: npm install --no-audit --no-fund --prefix runner
+
+      # ---- Kokoro (voice + kokoro dubs) ----
+
       - name: Cache Kokoro models
-        if: steps.job.outputs.capability == 'voice-kokoro' || steps.job.outputs.capability == 'film-dub'
+        if: steps.job.outputs.capability == 'voice-kokoro' || (steps.job.outputs.capability == 'film-dub' && steps.job.outputs.engine != 'xtts')
         uses: actions/cache@v4
         with:
           path: runner/models
           key: kokoro-models-v1
 
-      - name: Install runner dependencies
-        run: npm install --no-audit --no-fund --prefix runner
-
       - name: Install Kokoro
-        if: steps.job.outputs.capability == 'voice-kokoro'
+        if: steps.job.outputs.capability == 'voice-kokoro' || (steps.job.outputs.capability == 'film-dub' && steps.job.outputs.engine != 'xtts')
         run: pip install --quiet kokoro-onnx soundfile
 
       - name: Fetch Kokoro models
-        if: steps.job.outputs.capability == 'voice-kokoro' || steps.job.outputs.capability == 'film-dub'
+        if: steps.job.outputs.capability == 'voice-kokoro' || (steps.job.outputs.capability == 'film-dub' && steps.job.outputs.engine != 'xtts')
         run: bash runner/scripts/fetch-models.sh
 
+      # ---- XTTS (voice clone + xtts dubs) ----
+
       - name: Install XTTS
-        if: steps.job.outputs.capability == 'voice-xtts'
+        if: steps.job.outputs.capability == 'voice-xtts' || (steps.job.outputs.capability == 'film-dub' && steps.job.outputs.engine == 'xtts')
+        continue-on-error: true
         run: pip install --quiet TTS
+
+      # ---- Other engines ----
 
       - name: Install PPT Master dependencies
         if: steps.job.outputs.capability == 'deck-pptmaster'
@@ -85,12 +98,7 @@ jobs:
 
       - name: Install source-edit dependencies
         if: contains(fromJSON('["film-talking-head","film-clip-factory","film-podcast","film-dub","film-screen-demo","film-hybrid"]'), steps.job.outputs.capability)
-        run: pip install --quiet faster-whisper kokoro-onnx soundfile Pillow
-
-      - name: Install XTTS (optional)
-        if: steps.job.outputs.capability == 'film-dub'
-        continue-on-error: true
-        run: pip install --quiet TTS
+        run: pip install --quiet faster-whisper Pillow soundfile
 
       - name: Run job
         env:
