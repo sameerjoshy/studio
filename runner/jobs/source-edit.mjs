@@ -198,6 +198,10 @@ export default async function sourceEdit({ job, spec, workDir, progress, root })
       cwd: root,
       shell: false,
       timeoutMs: 2_400_000,
+      env: {
+        KOKORO_MODEL: path.join(root, 'models', 'kokoro-v1.0.onnx'),
+        KOKORO_VOICES: path.join(root, 'models', 'voices-v1.0.bin'),
+      },
       onStderr: (line) => console.log(line.trim()),
     },
   );
