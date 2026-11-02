@@ -34,6 +34,25 @@ export default function JobCard({ job, capability, url, onRetry, compact = false
           </span>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-500">
+          {typeof job.meta?.slop?.score === 'number' ? (
+            <span
+              className={clsx(
+                'pill',
+                job.meta.slop.score >= 40
+                  ? 'border-mint/30 bg-mint/10 text-mint'
+                  : job.meta.slop.score >= 30
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                    : 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+              )}
+              title={
+                Array.isArray(job.meta.slop.issues) && job.meta.slop.issues.length
+                  ? job.meta.slop.issues.map((issue) => issue.detail).join(', ')
+                  : 'Copy score'
+              }
+            >
+              Copy {job.meta.slop.score}
+            </span>
+          ) : null}
           {job.meta?.cost_usd ? <span>${Number(job.meta.cost_usd).toFixed(4)}</span> : null}
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" />

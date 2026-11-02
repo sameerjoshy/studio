@@ -2,7 +2,7 @@ import type { Env } from './env';
 import { json, serverError, unauthorized } from './lib/http';
 import { safeEqual } from './lib/session';
 import { deleteStaleOutputs, deleteStaleSources } from './lib/supabase';
-import { handleApi, handleInternalLlm } from './router';
+import { handleApi, handleInternalLlm, handleInternalSlop } from './router';
 
 const GENERATION_PATHS = new Set(['/api/chat', '/api/run']);
 const GENERATION_LIMIT = 60;
@@ -48,12 +48,14 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    if (url.pathname === '/api/internal/llm' && request.method === 'POST') {
+    if (url.pathname.startsWith('/api/internal/') && request.method === 'POST') {
       const provided = request.headers.get('x-runner-secret') ?? '';
       if (!env.RUNNER_SECRET || !safeEqual(provided, env.RUNNER_SECRET)) {
         return unauthorized('Bad runner secret');
       }
-      return handleInternalLlm(env, request);
+      if (url.pathname === '/api/internal/llm') return handleInternalLlm(env, request);
+      if (url.pathname === '/api/internal/slop') return handleInternalSlop(env, request);
+      return json({ error: 'Not found' }, 404);
     }
 
     if (url.pathname === '/api/session') {

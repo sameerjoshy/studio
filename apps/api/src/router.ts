@@ -3,6 +3,7 @@ import { ACTIVE_CAPABILITIES, CAPABILITIES, getCapability, type Capability } fro
 import { callJson, diagnoseProviders, listGroqModels } from './lib/llm';
 import { dispatchRender } from './lib/github';
 import { validateSpec } from './lib/spec';
+import { applyCopy, collectCopy, scoreCopy, summarise, type CopyLine, type SlopIssue } from './lib/slop';
 import {
   addEvent,
   getJob,
@@ -84,6 +85,7 @@ function buildSystemPrompt(): string {
     JSON.stringify(manifest, null, 2),
     '',
     'Deck content must be substantive: choose the number of slides the brief actually needs (a quick update may be 3-4, a broad topic 8-12), 3-5 bullets per slide, written for the stated audience.',
+    'Never invent statistics, percentages, or customer names. If the brief has no numbers, write without them.',
     'Film content must fit 12 seconds: one title, one subtitle, exactly three short lines.',
     'Narration text is read aloud: no markdown, no stage directions, no emoji.',
     '',
@@ -118,6 +120,85 @@ function transcript(messages: ChatMessage[]): string {
     .join('\n');
 }
 
+export interface SlopMeta {
+  score: number;
+  issues: SlopIssue[];
+  before?: number;
+  revised: boolean;
+}
+
+async function reviseLines(
+  env: Env,
+  values: string[],
+  issues: SlopIssue[],
+): Promise<string[] | null> {
+  try {
+    const result = await callJson(env, {
+      system: [
+        'You are a copy editor. Rewrite each line to be direct, specific, and human.',
+        'Keep the meaning, facts, length, and order. Do not add or remove lines.',
+        'Never use these exact tokens or their variants: unlock, unleash, elevate, supercharge,',
+        'seamless, game-changer, cutting-edge, revolutionize, transformative, delve, ever-evolving,',
+        'tapestry, testament to, not just a, more than just, next-level, best-in-class, world-class,',
+        'synergy, leverage, empower, paradigm, disrupt, "in today\'s fast-paced".',
+        'Also remove: "in order to", "the fact that", "it is important to note", "at the end of the day".',
+        'No em dashes. No -ly adverbs. No "very", "really", "just", or "actually".',
+        'Return JSON only: {"lines": ["..."]}',
+      ].join('\n'),
+      user: `PROBLEMS: ${summarise(issues)}\n\nLINES:\n${JSON.stringify(values, null, 2)}`,
+      maxTokens: 1800,
+    });
+
+    const payload = (result.data ?? {}) as { lines?: unknown[] };
+    const revised = Array.isArray(payload.lines)
+      ? payload.lines.map((line) => String(line))
+      : [];
+
+    return revised.length === values.length ? revised : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Score the model-written copy and, if it is below the bar, ask for one
+ * revision pass. Facts and structure stay put; only the wording changes.
+ */
+async function gateCopy(
+  env: Env,
+  capability: Capability,
+  spec: Record<string, unknown>,
+): Promise<{ spec: Record<string, unknown>; slop: SlopMeta | null }> {
+  const lines = collectCopy(spec, capability.id);
+  if (!lines.length) return { spec, slop: null };
+
+  const before = scoreCopy(lines.map((line) => line.value).join('\n'));
+  const banned = before.issues.filter((issue) => issue.kind === 'banned').length;
+
+  if (before.score >= 40 && banned < 2) {
+    return { spec, slop: { score: before.score, issues: before.issues, revised: false } };
+  }
+
+  const revised = await reviseLines(
+    env,
+    lines.map((line) => line.value),
+    before.issues,
+  );
+
+  if (revised) {
+    const after = scoreCopy(revised.join('\n'));
+    if (after.score > before.score) {
+      const next = lines.map((line, index) => ({ ...line, value: revised[index] })) as CopyLine[];
+      return {
+        spec: applyCopy(spec, next),
+        slop: { score: after.score, issues: after.issues, before: before.score, revised: true },
+      };
+    }
+  }
+
+  return { spec, slop: { score: before.score, issues: before.issues, revised: false } };
+}
+
 async function startJob(
   env: Env,
   capability: Capability,
@@ -143,6 +224,31 @@ async function startJob(
  * Runner-only model gateway. Keeps every provider key inside the Worker; the
  * harness authenticates with RUNNER_SECRET instead of holding LLM keys.
  */
+export async function handleInternalSlop(env: Env, request: Request): Promise<Response> {
+  const body = await readJson<{ lines?: unknown[]; revise?: boolean }>(request);
+  const lines = (body?.lines ?? []).filter(
+    (line): line is string => typeof line === 'string' && line.trim().length > 0,
+  );
+
+  if (!lines.length) return badRequest('lines are required');
+  if (lines.length > 80) return badRequest('too many lines');
+
+  const before = scoreCopy(lines.join('\n'));
+  const banned = before.issues.filter((issue) => issue.kind === 'banned').length;
+  let revised: string[] | null = null;
+
+  if (body?.revise && (before.score < 40 || banned >= 2)) {
+    revised = await reviseLines(env, lines, before.issues);
+  }
+
+  return json({
+    score: revised ? scoreCopy(revised.join('\n')).score : before.score,
+    before: before.score,
+    issues: before.issues,
+    lines: revised,
+  });
+}
+
 export async function handleInternalLlm(env: Env, request: Request): Promise<Response> {
   const body = await readJson<{
     system?: string;
@@ -255,7 +361,8 @@ async function handleChat(env: Env, request: Request): Promise<Response> {
   }
 
   try {
-    const job = await startJob(env, capability, validation.spec, usageMeta);
+    const gated = await gateCopy(env, capability, validation.spec);
+    const job = await startJob(env, capability, gated.spec, { ...usageMeta, slop: gated.slop });
     return json({
       action: 'run',
       reply: reply || `Starting ${capability.name}.`,
@@ -280,7 +387,11 @@ async function handleRun(env: Env, request: Request): Promise<Response> {
   if (!validation.ok) return badRequest(validation.problem ?? 'Invalid spec');
 
   try {
-    const job = await startJob(env, capability, validation.spec, { source: 'direct' });
+    const gated = await gateCopy(env, capability, validation.spec);
+    const job = await startJob(env, capability, gated.spec, {
+      source: 'direct',
+      slop: gated.slop,
+    });
     return json({ job }, 201);
   } catch (error) {
     return serverError(error instanceof Error ? error.message : 'Could not start the job.');
