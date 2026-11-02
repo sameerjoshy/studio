@@ -12,6 +12,11 @@ function hex(value: unknown, fallback: string): string {
   return /^#[0-9a-f]{6}$/i.test(candidate) ? candidate : fallback;
 }
 
+function aspectOf(input: Record<string, unknown>): '16:9' | '9:16' | '1:1' {
+  const value = str(input.aspect);
+  return value === '9:16' || value === '1:1' ? value : '16:9';
+}
+
 function bullets(value: unknown, limit = 5): string[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -99,6 +104,7 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
       source_path: sourcePath,
       brief: str(input.brief).slice(0, 2000),
       seconds: Math.min(180, Math.max(5, Math.round(requested))),
+      aspect: aspectOf(input),
     };
 
     if (capability.id === 'film-dub') {
@@ -123,6 +129,7 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
         brief: brief.slice(0, 4000),
         seconds: Math.min(90, Math.max(12, seconds)),
         audience: str(input.audience) || 'business audience',
+        aspect: aspectOf(input),
         ...(capability.id === 'film-motion-graphics' ? { theme: 'flat-motion-graphics' } : {}),
       },
     };
@@ -175,6 +182,7 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
         subtitle,
         bullets: lines.slice(0, 3),
         accent: hex(input.accent, '#34D399'),
+        aspect: aspectOf(input),
       },
     };
   }

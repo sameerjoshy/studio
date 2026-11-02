@@ -193,6 +193,8 @@ export default async function sourceEdit({ job, spec, workDir, progress, root })
       planPath,
       '--out',
       out,
+      '--aspect',
+      String(spec.aspect || '16:9'),
     ],
     {
       cwd: root,

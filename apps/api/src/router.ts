@@ -65,11 +65,11 @@ function buildSystemPrompt(): string {
           : capability.id === 'film-documentary'
             ? '{ "brief": string, "seconds": number, "tone": string }'
             : capability.id === 'film-explainer'
-              ? '{ "brief": string, "seconds": number, "audience": string }'
+              ? '{ "brief": string, "seconds": number, "audience": string, "aspect"?: "16:9"|"9:16"|"1:1" }'
               : capability.id === 'film-motion-graphics'
-                ? '{ "brief": string, "seconds": number, "audience": string }'
+                ? '{ "brief": string, "seconds": number, "audience": string, "aspect"?: "16:9"|"9:16"|"1:1" }'
             : capability.id === 'film-brand'
-          ? '{ "title": string, "subtitle": string, "bullets": [string, string, string], "accent": "#RRGGBB" }'
+          ? '{ "title": string, "subtitle": string, "bullets": [string, string, string], "accent": "#RRGGBB", "aspect"?: "16:9"|"9:16"|"1:1" }'
           : capability.id === 'voice-kokoro'
             ? '{ "text": string, "voice": string, "speed": number }'
             : capability.id === 'voice-xtts'
@@ -94,6 +94,7 @@ function buildSystemPrompt(): string {
     '- Film: if the subtitle is missing, write one.',
     '- Documentary: infer duration when the user does not state it (default 30 seconds, max 90). Never ask. Keep queries literal and filmable.',
     '- Explainer: infer duration when the user does not state it (default 30 seconds, max 90). Never ask.',
+    '- Aspect: if the user says vertical, Reels, TikTok, or Short, set "aspect": "9:16". For square or LinkedIn, "1:1". Otherwise "16:9".',
     '- Deck: never invent a slide count. If the user gave one, pass it as "slides"; otherwise omit it and let the deck planner infer the length from the brief.',
     '- Deck: if the audience is missing, infer it, otherwise assume a business audience.',
     '- Narration: if the voice is missing, use a warm neutral voice.',

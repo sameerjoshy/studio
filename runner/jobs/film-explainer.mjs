@@ -1,5 +1,6 @@
 import { access, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fitAspect } from '../lib/aspect.mjs';
 import { callModel } from '../lib/model.mjs';
 import { run } from '../lib/shell.mjs';
 
@@ -236,10 +237,13 @@ export default async function filmExplainer({ job, spec, workDir, progress, root
     },
   );
 
+  const aspect = ['9:16', '1:1'].includes(String(spec.aspect)) ? String(spec.aspect) : '16:9';
+  const formatted = await fitAspect(out, aspect, workDir, 'pad');
+
   await progress('finalising', 95, 'Explainer rendered');
 
   return {
-    file: out,
+    file: formatted,
     filename: 'explainer.mp4',
     contentType: 'video/mp4',
     meta: {

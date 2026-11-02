@@ -527,6 +527,46 @@ def render_hybrid(source, transcript, work, plan) -> Path:
     return out
 
 
+ASPECT_SIZES = {
+    "16:9": (1920, 1080),
+    "9:16": (1080, 1920),
+    "1:1": (1080, 1080),
+}
+
+COVER_KINDS = {"talking-head", "clip-factory", "hybrid", "dub"}
+
+
+def fit_aspect(path: Path, aspect: str, work: Path, kind: str) -> Path:
+    if aspect not in ASPECT_SIZES or aspect == "16:9":
+        return path
+
+    width, height = ASPECT_SIZES[aspect]
+    out = work / f"aspect-{aspect.replace(':', 'x')}.mp4"
+
+    if kind in COVER_KINDS:
+        vf = f"scale={width}:{height}:force_original_aspect_ratio=increase,crop={width}:{height}"
+    else:
+        vf = (
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=0x0A192F"
+        )
+
+    result = run(
+        [
+            "ffmpeg", "-y", "-v", "error",
+            "-i", str(path),
+            "-vf", vf,
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-c:a", "aac", "-b:a", "160k",
+            "-movflags", "+faststart",
+            str(out),
+        ]
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"aspect normalise failed: {result.stderr[-300:]}")
+    return out
+
+
 RENDERERS = {
     "talking-head": render_talking_head,
     "clip-factory": render_clip_factory,
@@ -551,6 +591,7 @@ def stage_render(args) -> int:
 
     try:
         out = renderer(source, transcript, work, plan)
+        out = fit_aspect(out, args.aspect, work, args.kind)
     except Exception as exc:  # pragma: no cover
         import traceback
 
@@ -588,6 +629,7 @@ def main() -> int:
     parser.add_argument("--kind")
     parser.add_argument("--plan")
     parser.add_argument("--out")
+    parser.add_argument("--aspect", default="16:9")
     args = parser.parse_args()
 
     if args.stage == "transcribe":

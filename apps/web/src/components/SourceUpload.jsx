@@ -26,6 +26,7 @@ export default function SourceUpload({ capabilities, onCreated, onClose }) {
   const [brief, setBrief] = useState('');
   const [language, setLanguage] = useState('es');
   const [engine, setEngine] = useState('kokoro');
+  const [aspect, setAspect] = useState('16:9');
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState('');
   const [error, setError] = useState('');
@@ -61,6 +62,7 @@ export default function SourceUpload({ capabilities, onCreated, onClose }) {
         source_path: signed.path,
         brief: brief.trim(),
         seconds: 90,
+        aspect,
         ...(capabilityId === 'film-dub' ? { language, engine } : {}),
       };
       const { job } = await api.run(capabilityId, spec);
@@ -128,6 +130,34 @@ export default function SourceUpload({ capabilities, onCreated, onClose }) {
             ))}
           </div>
         </fieldset>
+
+        <div className="mb-4">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            Format
+          </div>
+          <div className="flex gap-1.5">
+            {[
+              ['16:9', 'Landscape'],
+              ['9:16', 'Vertical'],
+              ['1:1', 'Square'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setAspect(value)}
+                className={clsx(
+                  'flex-1 rounded-lg border px-3 py-2 text-xs transition',
+                  aspect === value
+                    ? 'border-accent/60 bg-accent/15 text-white'
+                    : 'border-line bg-panel text-slate-400 hover:border-slate-500',
+                )}
+              >
+                {label}
+                <span className="ml-1 text-[10px] text-slate-500">{value}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {capabilityId === 'film-dub' && (
           <div className="mb-4 grid gap-3 sm:grid-cols-3">

@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fitAspect } from '../lib/aspect.mjs';
 import { run } from '../lib/shell.mjs';
 
 const HYPERFRAMES = process.env.HYPERFRAMES_VERSION || '0.8.226';
@@ -58,10 +59,13 @@ export default async function filmBrand({ spec, workDir, progress, root }) {
     },
   );
 
+  const aspect = ['9:16', '1:1'].includes(String(spec.aspect)) ? String(spec.aspect) : '16:9';
+  const formatted = await fitAspect(out, aspect, workDir, 'pad');
+
   await progress('encoding', 90, 'Film encoded');
 
   return {
-    file: out,
+    file: formatted,
     filename: 'brand-film.mp4',
     contentType: 'video/mp4',
     meta: { engine: `hyperframes@${HYPERFRAMES}`, duration: 12, resolution: '1920x1080', fps: 30 },
