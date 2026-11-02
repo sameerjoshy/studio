@@ -79,6 +79,23 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     return { ok: true, spec };
   }
 
+  if (capability.id === 'film-documentary') {
+    const brief = str(input.brief) || str(input.source) || str(input.text);
+    if (!brief) return { ok: false, spec: {}, problem: 'A documentary needs a brief.' };
+
+    const requested = Number(input.seconds) || Number(input.duration);
+    const seconds = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : 30;
+
+    return {
+      ok: true,
+      spec: {
+        brief: brief.slice(0, 4000),
+        seconds: Math.min(90, Math.max(10, seconds)),
+        tone: str(input.tone) || 'observational',
+      },
+    };
+  }
+
   if (capability.id === 'film-brand') {
     const title = str(input.title);
     const subtitle = str(input.subtitle);

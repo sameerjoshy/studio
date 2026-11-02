@@ -13,6 +13,7 @@ const JOBS = {
   'deck-native': () => import('./jobs/deck-native.mjs'),
   'deck-pptmaster': () => import('./jobs/deck-pptmaster.mjs'),
   'film-brand': () => import('./jobs/film-brand.mjs'),
+  'film-documentary': () => import('./jobs/film-documentary.mjs'),
 };
 
 function cleanName(name) {

@@ -187,21 +187,26 @@ export const CAPABILITIES: Capability[] = [
       'Real B-roll instead of animated stills',
       'Stories that need archival texture',
     ],
-    inputs: ['Narrative brief', 'Target duration', 'Tone'],
-    examples: ['Make a 30-second documentary montage on the history of GTM tools'],
-    estTime: '10-30 minutes',
-    cost: 'Free (GitHub Actions)',
-    licence: 'AGPL-3.0 (OpenMontage)',
-    status: 'planned',
-    stages: [
-      'Build a CLIP-searchable corpus',
-      'Select and rank clips',
-      'Edit the timeline',
-      'Render the final cut',
+    inputs: ['Narrative brief', 'Optional duration', 'Tone'],
+    examples: [
+      'Make a 30-second documentary montage on city life in the rain',
+      'A real-footage montage on the history of aviation',
     ],
-    limits: ['AGPL-3.0: modifications must be published if offered as a service'],
-    disabledReason:
-      'OpenMontage spike pending: it needs a larger runner and a headless check before we ship it.',
+    estTime: '5-15 minutes',
+    cost: 'Free (open archives + ffmpeg)',
+    licence: 'AGPL-3.0 (OpenMontage)',
+    status: 'beta',
+    stages: [
+      'Plan the shots from the brief',
+      'Search Wikimedia, NASA, and Archive.org',
+      'Pick one relevant clip per shot',
+      'Trim, normalise, and concat with ffmpeg',
+    ],
+    limits: [
+      'Open archives only - a free Pexels key would improve stock quality',
+      'Literal, filmable subjects work best; abstract briefs retrieve noise',
+      'AGPL-3.0: modifications must be published if offered as a service',
+    ],
   },
 ];
 

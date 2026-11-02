@@ -1,5 +1,6 @@
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { callModel } from './model.mjs';
 import { run } from './shell.mjs';
 
 const MAX_REPAIR_ROUNDS = 2;
@@ -37,30 +38,6 @@ const SVG_RULES = [
   `  <text x="1208" y="668" text-anchor="end" font-family="Arial" font-size="18" fill="${PALETTE.muted}">2</text>`,
   '</svg>',
 ].join('\n');
-
-async function callModel({ system, user, maxTokens = 3200, prefer = 'deepseek' }) {
-  const base = process.env.STUDIO_BASE_URL;
-  const secret = process.env.RUNNER_SECRET;
-  if (!base || !secret) throw new Error('STUDIO_BASE_URL and RUNNER_SECRET are required');
-
-  const response = await fetch(`${base}/api/internal/llm`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-runner-secret': secret },
-    body: JSON.stringify({ system, user, maxTokens, prefer }),
-    signal: AbortSignal.timeout(180_000),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Model gateway ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  }
-
-  const payload = await response.json();
-  return {
-    data: payload.data ?? {},
-    provider: payload.provider ?? 'unknown',
-    usage: payload.usage ?? { tokens_in: 0, tokens_out: 0, cost_usd: 0 },
-  };
-}
 
 function cleanSvg(value) {
   let svg = String(value ?? '').trim();

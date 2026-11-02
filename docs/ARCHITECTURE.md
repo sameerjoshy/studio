@@ -54,6 +54,24 @@ by `RUNNER_SECRET`, so provider keys never leave the Worker. If the harness or
 the checker fails, the job falls back to the deterministic Deck Studio so the
 user still gets a file.
 
+## OpenMontage documentary path
+
+`film-documentary` runs OpenMontage's own tools on its fast path, which needs no
+CLIP model:
+
+1. Plan 4-8 literal shot queries with the model
+2. `direct_clip_search` against Wikimedia Commons, NASA, and Archive.org
+3. Rank candidates by query-token relevance, then source quality, then duration
+   (a shot with zero relevance is dropped rather than filled with noise)
+4. `video_compose` with `render_runtime: ffmpeg` trims and concatenates the cut
+
+The driver is `runner/py/openmontage_documentary.py`; it prints one JSON result
+line. OpenMontage is cloned per job and kept as an external process, so its
+AGPL-3.0 terms do not reach Studio's MIT code.
+
+Known limit: open-archive search is literal. Abstract briefs retrieve noise, and
+a free Pexels key is the single biggest quality upgrade when added.
+
 ## Access
 
 Studio is open: there is no login. The UI is public and every generation route
