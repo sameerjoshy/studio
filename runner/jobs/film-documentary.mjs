@@ -244,13 +244,15 @@ export default async function filmDocumentary({ job, spec, workDir, progress, ro
   const planned = await callModel({
     system: (cinematic
       ? [
-          'You are a film editor planning a mood-led cinematic montage from real footage.',
+          'You are a film editor planning a mood-led cinematic montage from real archive footage.',
           'Return JSON only: {"title": string, "tone": string, "slots": [{"query": string, "seconds": number, "intent": string}]}',
           'Rules:',
-          '- 5-7 slots whose seconds add up to roughly the requested duration.',
-          '- Each slot holds 5-7 seconds; this is slower and more atmospheric than a documentary cut.',
-          '- Each query is 2-5 literal, filmable words a stock or archive search can match.',
-          '- Mood and texture over exposition. No abstract phrases, no brand names.',
+          '- 6-8 slots whose seconds add up to roughly the requested duration.',
+          '- Each slot holds 4-6 seconds; this is slower and more atmospheric than a documentary cut.',
+          '- Queries must be common, filmable subjects that open archives actually hold:',
+          '  airplane, airport runway, clouds from a window, jet engine, city skyline, rocket launch, rain, ocean.',
+          '- Prefer broad nouns over props, brands, or period details.',
+          '- Mood comes from pacing, grading, and music, not from obscure subjects.',
         ].join('\n')
       : [
           'You are a documentary editor planning a real-footage montage.',
@@ -336,10 +338,13 @@ export default async function filmDocumentary({ job, spec, workDir, progress, ro
   });
 
   const totalSeconds = picks.reduce((sum, pick) => sum + pick.hold, 0);
-  if (picks.length < 3 || totalSeconds < 8) {
+  const minShots = cinematic ? 2 : 3;
+  const minSeconds = cinematic ? 6 : 8;
+
+  if (picks.length < minShots || totalSeconds < minSeconds) {
     throw new Error(
       `Only ${picks.length} relevant shot(s) found in the open archives. ` +
-        'Add a free Pexels key (PEXELS_API_KEY) or use a more literal, filmable brief.',
+        'Use a broader, more filmable brief, or add a free Pixabay key.',
     );
   }
 
