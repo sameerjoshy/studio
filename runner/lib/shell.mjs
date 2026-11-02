@@ -48,7 +48,7 @@ export function run(command, args, options = {}) {
       } else {
         reject(
           new Error(
-            `${command} exited with ${code}\n${stderr.slice(-1200) || stdout.slice(-1200)}`,
+            `${command} exited with ${code}\nSTDOUT: ${stdout.slice(-800)}\nSTDERR: ${stderr.slice(-800)}`,
           ),
         );
       }

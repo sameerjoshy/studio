@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """OpenMontage documentary driver for the Studio runner.
 
 Two modes, so the caller can rerank candidates before composing:
@@ -47,7 +47,9 @@ STOPWORDS = {
 
 
 def fail(message: str) -> int:
-    print(json.dumps({"ok": False, "error": message}))
+    payload = json.dumps({"ok": False, "error": message})
+    print(payload)
+    print(payload, file=sys.stderr)
     return 1
 
 
@@ -78,7 +80,7 @@ def load_tools(repo: Path):
 def mode_search(args, repo: Path) -> int:
     DirectClipSearch, _ = load_tools(repo)
 
-    plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+    plan = json.loads(Path(args.plan).read_text(encoding="utf-8-sig"))
     slots = plan.get("slots") or []
     if not slots:
         return fail("Plan has no slots")
@@ -206,7 +208,7 @@ def mode_search(args, repo: Path) -> int:
 def mode_compose(args, repo: Path) -> int:
     _, VideoCompose = load_tools(repo)
 
-    payload = json.loads(Path(args.picks).read_text(encoding="utf-8"))
+    payload = json.loads(Path(args.picks).read_text(encoding="utf-8-sig"))
     picks = payload.get("picks") or []
     if not picks:
         return fail("No picks supplied")
