@@ -11,3 +11,4 @@ renders/
 tmp/
 .DS_Store
 .hyperframes/
+__pycache__/
