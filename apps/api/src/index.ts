@@ -45,7 +45,20 @@ async function handleAuth(env: Env, request: Request): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
+    let url = new URL(request.url);
+
+    // The app is also mounted at apps.gtm-360.com/studio, where the hub already
+    // strips the prefix. Accept the prefix directly too so /studio works on the
+    // Worker origin and absolute asset URLs resolve on both surfaces.
+    if (url.pathname === '/studio') {
+      return Response.redirect(`${url.origin}/studio/`, 302);
+    }
+    if (url.pathname.startsWith('/studio/')) {
+      const stripped = new URL(url.toString());
+      stripped.pathname = url.pathname.replace(/^\/studio/, '') || '/';
+      url = stripped;
+      request = new Request(stripped.toString(), request);
+    }
 
     if (url.pathname === '/health') {
       return json({ ok: true, service: 'studio' });

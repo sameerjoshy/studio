@@ -1,5 +1,10 @@
+// Studio is served both at the Worker root and behind apps.gtm-360.com/studio,
+// where the hub strips the prefix before forwarding. Keep the browser calls on
+// whichever prefix the page was loaded from.
+const PREFIX = window.location.pathname.startsWith('/studio') ? '/studio' : '';
+
 async function request(path, init = {}) {
-  const response = await fetch(path, {
+  const response = await fetch(`${PREFIX}${path}`, {
     credentials: 'same-origin',
     ...init,
     headers: {
