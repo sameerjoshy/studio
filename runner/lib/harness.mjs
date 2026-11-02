@@ -85,17 +85,27 @@ function validSvg(svg) {
 }
 
 async function planDeck({ brief, slides, audience }) {
-  const contentSlides = Math.max(1, slides - 2);
+  const requested = Number(slides);
+  const requestedContent =
+    Number.isFinite(requested) && requested >= 3 ? Math.max(1, Math.round(requested) - 2) : null;
+
+  const lengthRule = requestedContent
+    ? `Produce exactly ${requestedContent} content slides.`
+    : 'Choose the number of content slides the brief genuinely needs: a narrow brief may need 3, a broad one may need 10. Do not pad and do not merge distinct ideas.';
+
   const system = [
     'You are a presentation strategist. Return JSON only.',
     'Schema: {"title": string, "subtitle": string, "slides": [{"title": string, "bullets": [string, string, string]}]}',
-    `Produce exactly ${contentSlides} content slides. Each slide gets 3 concrete bullets, max 18 words per bullet.`,
+    lengthRule,
+    'Each slide gets 3 concrete bullets, max 18 words per bullet.',
     'The title is the deck title, the subtitle is one line of context. Write specific, non-generic copy from the brief.',
   ].join('\n');
 
   const result = await callModel({
     system,
-    user: `BRIEF:\n${brief}\n\nAudience: ${audience}\nContent slides: ${contentSlides}`,
+    user: `BRIEF:\n${brief}\n\nAudience: ${audience}\n${
+      requestedContent ? `Content slides: ${requestedContent}` : 'Content slides: infer from the scope of the brief'
+    }`,
     maxTokens: 1600,
   });
 
@@ -109,7 +119,7 @@ async function planDeck({ brief, slides, audience }) {
         : [],
     }))
     .filter((slide) => slide.title)
-    .slice(0, contentSlides);
+    .slice(0, requestedContent ?? 14);
 
   if (!slidesOut.length) throw new Error('Planner returned no slides');
 

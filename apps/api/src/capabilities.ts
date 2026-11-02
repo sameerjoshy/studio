@@ -155,9 +155,9 @@ export const CAPABILITIES: Capability[] = [
       'Reusing a company .pptx template',
       'Data-backed charts that stay editable',
     ],
-    inputs: ['Brief or source text', 'Slide count', 'Audience'],
+    inputs: ['Brief or source text', 'Optional slide count', 'Audience'],
     examples: [
-      'Use ppt-master to build a 6-slide deck on our agent engine',
+      'Use ppt-master to build a deck on our agent engine',
       'A designed deck from this brief, native and editable',
     ],
     estTime: '5-15 minutes',
@@ -172,7 +172,7 @@ export const CAPABILITIES: Capability[] = [
     ],
     limits: [
       'Beta: harness quality varies with the model',
-      'Slower than Deck Studio - dozens of model calls per deck',
+      'Length is inferred from the brief unless you state a count',
       'Falls back to Deck Studio if the harness fails',
     ],
   },

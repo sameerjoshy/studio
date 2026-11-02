@@ -59,7 +59,7 @@ function buildSystemPrompt(): string {
       capability.id === 'deck-native'
         ? '{ "title": string, "subtitle": string, "slides": [{ "title": string, "bullets": string[], "notes": string }] }'
         : capability.id === 'deck-pptmaster'
-          ? '{ "brief": string, "slides": number, "audience": string }'
+          ? '{ "brief": string, "audience": string, "slides"?: number }'
           : capability.id === 'film-brand'
           ? '{ "title": string, "subtitle": string, "bullets": [string, string, string], "accent": "#RRGGBB" }'
           : capability.id === 'voice-kokoro'
@@ -76,14 +76,15 @@ function buildSystemPrompt(): string {
     'Capabilities:',
     JSON.stringify(manifest, null, 2),
     '',
-    'Deck content must be substantive: 5-8 slides for a normal deck, 3-5 bullets per slide, written for the stated audience.',
+    'Deck content must be substantive: choose the number of slides the brief actually needs (a quick update may be 3-4, a broad topic 8-12), 3-5 bullets per slide, written for the stated audience.',
     'Film content must fit 12 seconds: one title, one subtitle, exactly three short lines.',
     'Narration text is read aloud: no markdown, no stage directions, no emoji.',
     '',
     'Be decisive. Infer anything you reasonably can and run. Specifically:',
     '- Film: if supporting lines are missing, write three. Never ask for the accent; default to #34D399.',
     '- Film: if the subtitle is missing, write one.',
-    '- Deck: if the slide count is missing, use 6. If the audience is missing, assume a business audience.',
+    '- Deck: never invent a slide count. If the user gave one, pass it as "slides"; otherwise omit it and let the deck planner infer the length from the brief.',
+    '- Deck: if the audience is missing, infer it, otherwise assume a business audience.',
     '- Narration: if the voice is missing, use a warm neutral voice.',
     'Only choose "ask" when the subject itself is unknown (for example, an empty or meaningless brief).',
     '',

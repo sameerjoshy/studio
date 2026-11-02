@@ -66,7 +66,11 @@ function chunkSentences(brief, count) {
 
 export default async function deckPptmaster({ job, spec, workDir, progress }) {
   const brief = String(spec.brief ?? '').trim();
-  const slideCount = Math.min(10, Math.max(3, Number(spec.slides) || 6));
+  const requested = Number(spec.slides);
+  const slideCount =
+    Number.isFinite(requested) && requested > 0
+      ? Math.min(16, Math.max(3, Math.round(requested)))
+      : null;
   const audience = String(spec.audience ?? 'business audience');
   const repo = path.join(workDir, 'ppt-master');
   const python = process.env.PYTHON || 'python3';
@@ -126,7 +130,7 @@ export default async function deckPptmaster({ job, spec, workDir, progress }) {
       spec: {
         title: brief.split(/[.!?]/)[0]?.slice(0, 90) || 'Studio deck',
         subtitle: `Prepared for ${audience}`,
-        slides: chunkSentences(brief, slideCount),
+        slides: chunkSentences(brief, slideCount ?? 6),
       },
       workDir,
       progress,
@@ -139,7 +143,7 @@ export default async function deckPptmaster({ job, spec, workDir, progress }) {
         ...(fallback.meta ?? {}),
         engine: 'ppt-master (fallback: deck-native)',
         harnessError,
-        slides: slideCount,
+        slides: slideCount ?? undefined,
         cost_usd: Number(job?.meta?.cost_usd ?? 0),
       },
     };
@@ -155,7 +159,7 @@ export default async function deckPptmaster({ job, spec, workDir, progress }) {
       engine: 'ppt-master',
       harnessSteps: harness?.steps ?? 0,
       providers: harness?.providers ?? [],
-      slides: harness?.total ?? slideCount,
+      slides: harness?.total ?? slideCount ?? undefined,
       approvedPlan: harness?.plan?.title,
       harnessError,
       cost_usd: Number(job?.meta?.cost_usd ?? 0) + Number(harness?.usage?.costUsd ?? 0),

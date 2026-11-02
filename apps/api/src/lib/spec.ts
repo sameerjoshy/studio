@@ -67,16 +67,16 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     if (!brief) return { ok: false, spec: {}, problem: 'PPT Master needs a brief or source text.' };
 
     const requested = Number(input.slides);
-    const count = Number.isFinite(requested) ? Math.round(requested) : 6;
-
-    return {
-      ok: true,
-      spec: {
-        brief: brief.slice(0, 6000),
-        slides: Math.min(10, Math.max(3, count)),
-        audience: str(input.audience) || 'business audience',
-      },
+    const spec: Record<string, unknown> = {
+      brief: brief.slice(0, 6000),
+      audience: str(input.audience) || 'business audience',
     };
+
+    if (Number.isFinite(requested) && requested > 0) {
+      spec.slides = Math.min(16, Math.max(3, Math.round(requested)));
+    }
+
+    return { ok: true, spec };
   }
 
   if (capability.id === 'film-brand') {
