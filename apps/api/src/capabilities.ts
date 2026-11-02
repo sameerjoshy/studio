@@ -260,16 +260,18 @@ export const CAPABILITIES: Capability[] = [
     bestFor: ['Brand hero shots', 'Launch intros', 'Social stings'],
     inputs: ['Optional brief', 'Duration (2-8s)', 'Aspect'],
     examples: ['Render a 3-second GTM Guardian hero shot'],
-    estTime: '5-15 minutes',
+    estTime: '10-25 minutes',
     cost: 'Free',
     licence: 'MIT (our character) / Blender (GPL)',
-    status: 'beta',
+    status: 'planned',
     stages: ['Build the low-poly hero', 'Animate the hero beat', 'Render frames on Cycles CPU', 'Encode and add music'],
     limits: [
-      'Stylised low-poly, not a film-grade CG character',
-      '720p, 2-8 seconds per render',
-      'Silent except for the music library track',
+      'Blender pipeline is built and measured (2s at 720p takes ~20 min on the free runner)',
+      'The procedural model is a blockout, not the reference-quality render',
+      'Needs a proper 3D asset or GPU image-to-3D before it ships',
     ],
+    disabledReason:
+      'The Blender pipeline works, but the procedural hero is a blockout. Use the Gemini render as a hero still for now.',
   },
   {
     id: 'film-motion-graphics',

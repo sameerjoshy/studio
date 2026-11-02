@@ -128,6 +128,17 @@ mode-specific ffmpeg work renders the cut. Dubbing supports Kokoro (Apache-2.0)
 and XTTS (non-commercial); the workflow installs only the engine the job asks
 for, because the two have conflicting NumPy requirements.
 
+## GTM Guardian (Blender)
+
+The Blender path is built and measured, but not shipped. `runner/blender/gtm_guardian.py`
+builds a stylised low-poly hero procedurally (own mesh, materials, cape, GTM badge)
+and renders a keyframed beat on Cycles CPU. Measured on the free runner: **2 seconds
+at 1280x720, 32 samples, ~20 minutes** (no denoiser in the apt Blender build).
+
+The blocker is art, not plumbing: primitives produce a blockout, not the
+reference-quality render from the Gemini concept. Options are a proper 3D asset,
+a GPU image-to-3D pass, or a 2.5D parallax treatment of the Gemini still.
+
 ## Access
 
 Studio is open: there is no login. The UI is public and every generation route
