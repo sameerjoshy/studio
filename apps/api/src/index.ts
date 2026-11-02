@@ -1,46 +1,25 @@
 import type { Env } from './env';
-import { json, readJson, serverError, unauthorized } from './lib/http';
-import {
-  clearCookie,
-  issueSession,
-  readCookie,
-  safeEqual,
-  sessionCookie,
-  verifySession,
-  COOKIE_NAME,
-} from './lib/session';
+import { json, serverError, unauthorized } from './lib/http';
+import { safeEqual } from './lib/session';
 import { handleApi, handleInternalLlm } from './router';
 
-const attempts = new Map<string, { count: number; reset: number }>();
+const GENERATION_PATHS = new Set(['/api/chat', '/api/run']);
+const GENERATION_LIMIT = 60;
+const GENERATION_WINDOW_MS = 10 * 60 * 1000;
+
+const hits = new Map<string, { count: number; reset: number }>();
 
 function rateLimited(key: string): boolean {
   const now = Date.now();
-  const entry = attempts.get(key);
+  const entry = hits.get(key);
+
   if (!entry || entry.reset < now) {
-    attempts.set(key, { count: 1, reset: now + 60_000 });
+    hits.set(key, { count: 1, reset: now + GENERATION_WINDOW_MS });
     return false;
   }
+
   entry.count += 1;
-  return entry.count > 8;
-}
-
-async function handleAuth(env: Env, request: Request): Promise<Response> {
-  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  if (rateLimited(ip)) return json({ error: 'Too many attempts. Wait a minute.' }, 429);
-
-  const body = await readJson<{ passphrase?: string }>(request);
-  const passphrase = typeof body?.passphrase === 'string' ? body.passphrase : '';
-
-  if (!env.STUDIO_PASSPHRASE || !env.STUDIO_SESSION_SECRET) {
-    return serverError('Studio is not configured (passphrase secret missing).');
-  }
-
-  if (!passphrase || !safeEqual(passphrase, env.STUDIO_PASSPHRASE)) {
-    return json({ error: 'That passphrase is not right.' }, 401);
-  }
-
-  const token = await issueSession(env.STUDIO_SESSION_SECRET);
-  return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie(token) });
+  return entry.count > GENERATION_LIMIT;
 }
 
 export default {
@@ -76,23 +55,18 @@ export default {
       return handleInternalLlm(env, request);
     }
 
-    if (url.pathname === '/api/auth' && request.method === 'POST') {
-      return handleAuth(env, request);
+    if (url.pathname === '/api/session') {
+      return json({ ok: true, auth: 'open' });
     }
 
-    if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
-      return json({ ok: true }, 200, { 'Set-Cookie': clearCookie() });
+    // Studio is open by design. This is a best-effort spend guard, not auth:
+    // it stops a single client from draining Actions minutes or model credits.
+    if (GENERATION_PATHS.has(url.pathname) && request.method === 'POST') {
+      const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+      if (rateLimited(ip)) {
+        return json({ error: 'Slow down for a few minutes.' }, 429);
+      }
     }
-
-    if (url.pathname === '/api/session' && request.method === 'GET') {
-      const token = readCookie(request, COOKIE_NAME);
-      const ok = await verifySession(env.STUDIO_SESSION_SECRET, token);
-      return ok ? json({ ok: true }) : unauthorized();
-    }
-
-    const token = readCookie(request, COOKIE_NAME);
-    const ok = await verifySession(env.STUDIO_SESSION_SECRET, token);
-    if (!ok) return unauthorized();
 
     try {
       return await handleApi(env, request, url);

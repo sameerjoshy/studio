@@ -28,10 +28,6 @@ async function request(path, init = {}) {
 }
 
 export const api = {
-  session: () => request('/api/session'),
-  auth: (passphrase) =>
-    request('/api/auth', { method: 'POST', body: JSON.stringify({ passphrase }) }),
-  logout: () => request('/api/auth/logout', { method: 'POST' }),
   capabilities: () => request('/api/capabilities'),
   chat: (messages) => request('/api/chat', { method: 'POST', body: JSON.stringify({ messages }) }),
   jobs: () => request('/api/jobs'),

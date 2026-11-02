@@ -6,7 +6,7 @@
 2. **Free by default.** Public GitHub repo -> unlimited Actions minutes; Cloudflare
    Workers + Supabase free tiers; Gemini free tier for the model.
 3. **One origin.** The Worker serves the built UI and the API, so the session
-   cookie is first-party and CORS never appears.
+   API and UI share a host and CORS never appears.
 4. **Catalog is the contract.** One capability list drives the UI, the router,
    and the job dispatch. Nothing is hard-coded per surface.
 
@@ -54,15 +54,22 @@ by `RUNNER_SECRET`, so provider keys never leave the Worker. If the harness or
 the checker fails, the job falls back to the deterministic Deck Studio so the
 user still gets a file.
 
-## Auth
+## Access
 
-A passphrase is exchanged for an HMAC-signed, HttpOnly cookie (30 days).
-`STUDIO_SESSION_SECRET` signs it. All `/api/*` routes except `POST /api/auth`
-require the cookie. Failed attempts are rate-limited per IP in isolate memory.
+Studio is open: there is no login. The UI is public and every generation route
+is callable by anyone with the URL.
 
-This is a single-operator gate, not a multi-tenant identity system. If Studio
-ever grows users, replace it with the Supabase JWT pattern used by
-`content-engine`.
+Two guards remain, neither of which is authentication:
+
+- **Spend guard** - `POST /api/chat` and `POST /api/run` are limited to 60
+  requests per 10 minutes per IP, in isolate memory. This is best-effort and
+  only stops a single client from draining Actions minutes or model credits.
+- **Runner gateway** - `POST /api/internal/llm` requires `RUNNER_SECRET`, so the
+  model provider keys never leave the Worker.
+
+If the surface needs to be private again, add Cloudflare Access in front of the
+route (free up to 50 users) or reintroduce the passphrase cookie that this
+replaced.
 
 ## Storage
 

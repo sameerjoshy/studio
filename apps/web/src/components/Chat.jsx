@@ -205,7 +205,7 @@ export default function Chat({ capabilities, jobs, onJob, prefill, onPrefillUsed
             </button>
           </div>
           <p className="mt-2 text-center text-[10px] text-slate-600">
-            Enter to send · Shift+Enter for a new line · generation is passphrase-gated
+            Enter to send · Shift+Enter for a new line · jobs run on free remote compute
           </p>
         </div>
       </div>

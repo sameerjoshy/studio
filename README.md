@@ -1,6 +1,7 @@
 # Studio
 
-Live at **https://studio.sameerjoshy.workers.dev** (passphrase-gated, noindex).
+Live at **https://apps.gtm-360.com/studio** (open access, noindex). Also reachable
+at **https://studio.sameerjoshy.workers.dev**.
 
 The GTM-360 control room for creative output. One chat box; Studio picks the
 right engine, runs it on free remote compute, and hands back a file.
@@ -54,9 +55,8 @@ Worker (`wrangler secret put <NAME>`):
 
 | Name | Purpose |
 |---|---|
-| `STUDIO_PASSPHRASE` | the passphrase that unlocks the chat |
-| `STUDIO_SESSION_SECRET` | HMAC key for the session cookie |
 | `GITHUB_TOKEN` | fine-grained token with Actions write on this repo |
+| `RUNNER_SECRET` | shared secret for the runner-only model gateway |
 | `SUPABASE_URL` | shared Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | service role key (server only) |
 | `GROQ_API_KEY` | free-tier router and content model (primary) |
@@ -78,7 +78,7 @@ npm --prefix apps/api run deploy
 ```
 
 The Worker name is `studio` and serves both the API and the built static app on
-one origin, so the session cookie is first-party.
+one origin, so the API and UI share a host and CORS never appears.
 
 ## Add a capability
 

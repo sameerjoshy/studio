@@ -1,6 +1,5 @@
 import clsx from 'clsx';
-import { LayoutGrid, LibraryBig, LogOut, MessageSquare } from 'lucide-react';
-import { api } from '../lib/api.js';
+import { LayoutGrid, LibraryBig, MessageSquare } from 'lucide-react';
 
 const NAV = [
   { id: 'chat', label: 'Control Room', icon: MessageSquare },
@@ -8,15 +7,7 @@ const NAV = [
   { id: 'library', label: 'Library', icon: LibraryBig },
 ];
 
-export default function Shell({ tab, setTab, onSignOut, children }) {
-  async function signOut() {
-    try {
-      await api.logout();
-    } finally {
-      onSignOut();
-    }
-  }
-
+export default function Shell({ tab, setTab, children }) {
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="flex shrink-0 items-center justify-between gap-4 border-b border-line/70 px-4 py-3 md:h-screen md:w-60 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:px-4 md:py-6">
@@ -53,17 +44,9 @@ export default function Shell({ tab, setTab, onSignOut, children }) {
         </nav>
 
         <div className="hidden md:mt-auto md:block">
-          <button
-            type="button"
-            onClick={signOut}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-500 transition hover:text-slate-300"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            Sign out
-          </button>
-          <div className="mt-3 flex items-center gap-2 px-3 text-[10px] text-slate-600">
+          <div className="flex items-center gap-2 px-3 text-[10px] text-slate-600">
             <span className="h-1.5 w-1.5 rounded-full bg-mint" />
-            Free compute · v0.1
+            Open access · free compute · v0.1
           </div>
         </div>
       </aside>
