@@ -47,7 +47,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
 
       - name: Cache Kokoro models
-        if: steps.job.outputs.capability == 'voice-kokoro'
+        if: steps.job.outputs.capability == 'voice-kokoro' || steps.job.outputs.capability == 'film-dub'
         uses: actions/cache@v4
         with:
           path: runner/models
@@ -61,7 +61,7 @@ jobs:
         run: pip install --quiet kokoro-onnx soundfile
 
       - name: Fetch Kokoro models
-        if: steps.job.outputs.capability == 'voice-kokoro'
+        if: steps.job.outputs.capability == 'voice-kokoro' || steps.job.outputs.capability == 'film-dub'
         run: bash runner/scripts/fetch-models.sh
 
       - name: Install XTTS
