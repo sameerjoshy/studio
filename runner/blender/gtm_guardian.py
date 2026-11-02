@@ -1,4 +1,4 @@
-"""Build and render the GTM Guardian: a stylised low-poly 3D hero.
+﻿"""Build and render the GTM Guardian: a stylised low-poly 3D hero.
 
 Run headless:
   blender -b --python gtm_guardian.py -- --out <dir> --seconds 3 --fps 24 --samples 16
@@ -151,7 +151,7 @@ def setup_scene(args):
     bpy.context.scene.render.engine = "CYCLES"
     bpy.context.scene.cycles.device = "CPU"
     bpy.context.scene.cycles.samples = args.samples
-    bpy.context.scene.cycles.use_denoising = True
+    bpy.context.scene.cycles.use_denoising = False  # apt Blender lacks OpenImageDenoise
 
     width, height = (int(v) for v in args.resolution.lower().split("x"))
     scene = bpy.context.scene
