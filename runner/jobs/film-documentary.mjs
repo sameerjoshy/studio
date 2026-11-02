@@ -232,6 +232,15 @@ export default async function filmDocumentary({ job, spec, workDir, progress, ro
     }
   }
 
+  // The two search passes can surface the same file for different slots.
+  // Repeating a shot reads as a mistake, so keep the first occurrence only.
+  const seenPaths = new Set();
+  picks = picks.filter((pick) => {
+    if (seenPaths.has(pick.path)) return false;
+    seenPaths.add(pick.path);
+    return true;
+  });
+
   const totalSeconds = picks.reduce((sum, pick) => sum + pick.hold, 0);
   if (picks.length < 3 || totalSeconds < 8) {
     throw new Error(
