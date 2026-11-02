@@ -104,7 +104,7 @@ def mode_search(args, repo: Path) -> int:
         name.strip()
         for name in os.environ.get(
             "OPENMONTAGE_SOURCES",
-            "pexels,pixabay_video,coverr,wikimedia,nasa,nara,pond5_pd,loc",
+            "pexels,pixabay_video,coverr,wikimedia,nasa,archive_org,nara,pond5_pd,loc",
         ).split(",")
         if name.strip()
     ]
