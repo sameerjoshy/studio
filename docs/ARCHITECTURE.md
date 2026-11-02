@@ -78,6 +78,39 @@ AGPL-3.0 terms do not reach Studio's MIT code.
 Known limit: open-archive search is literal. Abstract briefs retrieve noise, and
 a free Pexels key is the single biggest quality upgrade when added.
 
+## OpenMontage animated explainer
+
+`film-explainer` and `film-motion-graphics` use OpenMontage's Remotion composer.
+The model plans 5-8 scenes (hero title, text card, callout, stat, comparison,
+bar/pie chart, KPI grid, progress), the job writes `props.json`, and Remotion
+renders `Explainer` in headless Chrome. `node_modules` is installed on the first
+run and reused by the Actions cache.
+
+Visuals only today: there is no narration, and charts may only use numbers the
+brief actually states.
+
+## Pipeline coverage
+
+| OpenMontage pipeline | Studio card | Status | Blocker |
+|---|---|---|---|
+| documentary-montage | Documentary Cut | beta | none |
+| animated-explainer | Animated Explainer | beta | none |
+| animation | Motion Graphics | beta | shares the explainer engine |
+| cinematic | Cinematic | planned | AI video provider keys |
+| avatar-spokesperson | Avatar Spokesperson | planned | avatar provider key |
+| talking-head | Talking Head | planned | source upload |
+| clip-factory | Clip Factory | planned | source upload |
+| localization-dub | Localization Dub | planned | source upload |
+| podcast-repurpose | Podcast Repurpose | planned | audio upload |
+| screen-demo | Screen Demo | planned | screen-recording upload |
+| hybrid | Hybrid | planned | source upload |
+| character-animation | Character Animation | planned | rig authoring pass |
+
+`framework-smoke` is a test fixture, not a product pipeline.
+
+The highest-leverage next feature is **source upload** (Supabase Storage plus a
+signed URL into the runner): it unlocks six pipelines at once.
+
 ## Access
 
 Studio is open: there is no login. The UI is public and every generation route
