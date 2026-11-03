@@ -1,4 +1,4 @@
-# Architecture
+﻿# Architecture
 
 ## Design constraints
 
@@ -139,7 +139,7 @@ The blocker is art, not plumbing: primitives produce a blockout, not the
 reference-quality render from the Gemini concept. Options are a proper 3D asset,
 a GPU image-to-3D pass, or a 2.5D parallax treatment of the Gemini still.
 
-## Guardian of GTM — Hero Kit
+## Guardian of GTM â€” Hero Kit
 
 The series kit is one job: `hero-kit`.
 
@@ -154,7 +154,7 @@ The series kit is one job: `hero-kit`.
   `thumbs/thumb-a|b|c.png`, and `README.txt`.
 - **Music**: a generated bed is muxed in; replace it with a licensed track from
   the private music library when one is available.
-- **Measured**: the full kit renders in about 2–4 minutes on the free runner.
+- **Measured**: the full kit renders in about 2â€“4 minutes on the free runner.
 
 ## Access
 
