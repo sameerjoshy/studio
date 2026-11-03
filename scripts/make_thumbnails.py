@@ -16,12 +16,24 @@ GOLD = (233, 180, 76)
 WHITE = (248, 250, 252)
 MUTED = (148, 163, 184)
 
-FONT_BOLD = "C:/Windows/Fonts/arialbd.ttf"
-FONT_REG = "C:/Windows/Fonts/arial.ttf"
+FONT_BOLD_CANDIDATES = [
+    "C:/Windows/Fonts/arialbd.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+]
+FONT_REG_CANDIDATES = [
+    "C:/Windows/Fonts/arial.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+]
 
 
-def font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
-    return ImageFont.truetype(FONT_BOLD if bold else FONT_REG, size)
+def font(size: int, bold: bool = True):
+    candidates = FONT_BOLD_CANDIDATES if bold else FONT_REG_CANDIDATES
+    for candidate in candidates:
+        if Path(candidate).exists():
+            return ImageFont.truetype(candidate, size)
+    return ImageFont.load_default(size=size)
 
 
 def background() -> Image.Image:

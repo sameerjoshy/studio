@@ -66,6 +66,12 @@ function buildSystemPrompt(): string {
           ? '{ "brief": string, "audience": string, "slides"?: number }'
           : capability.id === 'hero-intro'
             ? '{ "episodeNumber": string, "episodeTitle": string, "accent"?: "#RRGGBB" }'
+            : capability.id === 'hero-outro'
+            ? '{ "cta": string, "tagline": string, "accent"?: "#RRGGBB" }'
+            : capability.id === 'hero-sting'
+            ? '{ "episodeNumber": string, "episodeTitle": string, "accent"?: "#RRGGBB" }'
+            : capability.id === 'hero-kit'
+            ? '{ "episodeNumber": string, "episodeTitle": string, "cta"?: string, "tagline"?: string, "accent"?: "#RRGGBB" }'
             : capability.id === 'film-character'
             ? '{ "brief": string, "seconds": number, "aspect"?: "16:9"|"9:16"|"1:1" }'
             : capability.id === 'film-cinematic'
@@ -104,6 +110,8 @@ function buildSystemPrompt(): string {
     '- Cinematic: real footage with grade, fades, and music. Infer duration when missing (default 30, max 90). Never ask for a provider.',
     '- Character: the GTM Guardian, a stylised 3D hero. Infer duration when missing (default 3 seconds, max 8).',
     '- Hero intro: a 6-second series intro. Pass the episode number and title; do not ask for anything else.',
+    '- Hero kit: the full episode package (intro, outro, sting, thumbnails). Use it when the user asks for an episode kit or a full package.',
+    '- Hero outro/sting: individual assets. Only use them when the user asks for that specific piece.',
     '- Explainer: infer duration when the user does not state it (default 30 seconds, max 90). Never ask.',
     '- Aspect: if the user says vertical, Reels, TikTok, or Short, set "aspect": "9:16". For square or LinkedIn, "1:1". Otherwise "16:9".',
     '- Deck: never invent a slide count. If the user gave one, pass it as "slides"; otherwise omit it and let the deck planner infer the length from the brief.',

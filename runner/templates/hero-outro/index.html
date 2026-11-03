@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"
+  data-composition-variables='[
+    {"id":"cta","type":"string","label":"CTA","default":"SUBSCRIBE"},
+    {"id":"tagline","type":"string","label":"Tagline","default":"New episode every Tuesday"},
+    {"id":"accent","type":"color","label":"Accent","default":"#34D399"}
+  ]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #050b14; font-family: Inter, system-ui, sans-serif; }
+      #root {
+        position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        background:
+          radial-gradient(1000px 620px at 70% 40%, color-mix(in srgb, var(--accent, #34d399) 16%, transparent), transparent 62%),
+          radial-gradient(860px 600px at 16% 80%, rgba(79, 70, 229, 0.16), transparent 62%),
+          #050b14;
+      }
+      .clip { position: absolute; inset: 0; overflow: hidden; }
+      #grid {
+        position: absolute; inset: 0; opacity: 0.45;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+        background-size: 84px 84px;
+        mask-image: radial-gradient(900px 620px at 60% 45%, #000 0%, transparent 78%);
+      }
+      #vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(1200px 820px at 50% 50%, transparent 52%, rgba(0,0,0,0.55) 100%); }
+
+      #hero { position: absolute; right: 100px; bottom: -8px; height: 1010px; filter: drop-shadow(0 40px 80px rgba(0,0,0,0.55)); }
+
+      #eyebrow { position: absolute; left: 132px; top: 250px; color: var(--accent, #34d399); font-size: 28px; font-weight: 700; letter-spacing: 0.34em; }
+      #rule { position: absolute; left: 132px; top: 306px; width: 110px; height: 8px; background: var(--accent, #34d399); transform-origin: left center; }
+      #headline {
+        position: absolute; left: 126px; top: 344px; width: 980px;
+        font-family: Sora, Inter, sans-serif; font-size: 92px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.02; color: #fff;
+      }
+      #headline .accent { color: var(--accent, #34d399); }
+      #cta {
+        position: absolute; left: 132px; top: 640px; padding: 22px 42px; border-radius: 999px;
+        background: var(--accent, #34d399); color: #04120c; font-family: Sora, Inter, sans-serif; font-size: 38px; font-weight: 800; letter-spacing: 0.12em;
+      }
+      #tagline { position: absolute; left: 134px; top: 760px; color: #94a3b8; font-size: 30px; }
+      #mark { position: absolute; left: 134px; top: 860px; display: flex; align-items: center; gap: 14px; opacity: 0.7; }
+      #mark svg { width: 42px; height: 26px; }
+      #mark span { color: #e2e8f0; font-size: 26px; font-weight: 700; letter-spacing: 0.22em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="hero-outro" data-start="0" data-width="1920" data-height="1080" data-duration="5">
+      <div id="grid"></div>
+      <div id="vignette"></div>
+
+      <img id="hero" class="clip" src="poses/pose-thumbsup.png" data-start="0" data-duration="5" data-track-index="1" alt="" />
+
+      <div class="clip" data-start="0" data-duration="5" data-track-index="2">
+        <div id="eyebrow">GUARDIAN OF GTM</div>
+        <div id="rule"></div>
+        <div id="headline">ONE IDEA.<br />ONE <span class="accent">GUARDIAN.</span></div>
+        <div id="cta">SUBSCRIBE</div>
+        <div id="tagline">New episode every Tuesday</div>
+        <div id="mark">
+          <svg viewBox="0 0 100 60" aria-hidden="true">
+            <path d="M6 5 L46 30 L6 55 Z" fill="var(--accent, #34d399)" />
+            <path d="M94 5 L54 30 L94 55 Z" fill="#ffffff" />
+          </svg>
+          <span>GTM-360</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      gsap.registerPlugin();
+      const vars = window.__hyperframes.getVariables();
+      document.documentElement.style.setProperty('--accent', vars.accent || '#34d399');
+      document.getElementById('cta').textContent = vars.cta || 'SUBSCRIBE';
+      document.getElementById('tagline').textContent = vars.tagline || 'New episode every Tuesday';
+
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo('#grid', { opacity: 0 }, { opacity: 0.45, duration: 1.0, ease: 'sine.out' }, 0);
+      tl.fromTo('#hero', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out' }, 0.1);
+      tl.fromTo('#eyebrow', { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 0.3);
+      tl.fromTo('#rule', { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: 'power3.out' }, 0.45);
+      tl.fromTo('#headline', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: 'power3.out' }, 0.6);
+      tl.fromTo('#cta', { y: 18, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.55, ease: 'back.out(1.6)' }, 1.1);
+      tl.fromTo('#tagline', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'sine.out' }, 1.45);
+      tl.fromTo('#mark', { opacity: 0 }, { opacity: 0.7, duration: 0.5, ease: 'sine.out' }, 1.7);
+      tl.to('#cta', { scale: 1.03, duration: 0.6, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 2.6);
+
+      window.__timelines['hero-outro'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

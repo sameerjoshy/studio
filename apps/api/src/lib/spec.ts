@@ -152,6 +152,41 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     };
   }
 
+  if (capability.id === 'hero-outro') {
+    return {
+      ok: true,
+      spec: {
+        cta: str(input.cta).slice(0, 24) || 'SUBSCRIBE',
+        tagline: str(input.tagline).slice(0, 60) || 'New episode every Tuesday',
+        accent: hex(input.accent, '#34D399'),
+      },
+    };
+  }
+
+  if (capability.id === 'hero-sting') {
+    return {
+      ok: true,
+      spec: {
+        episodeNumber: (str(input.episodeNumber) || '01').slice(0, 4),
+        episodeTitle: str(input.episodeTitle).slice(0, 80) || 'PIPELINE HYGIENE',
+        accent: hex(input.accent, '#34D399'),
+      },
+    };
+  }
+
+  if (capability.id === 'hero-kit') {
+    return {
+      ok: true,
+      spec: {
+        episodeNumber: (str(input.episodeNumber) || '01').slice(0, 4),
+        episodeTitle: str(input.episodeTitle).slice(0, 80) || 'PIPELINE HYGIENE',
+        cta: str(input.cta).slice(0, 24) || 'SUBSCRIBE',
+        tagline: str(input.tagline).slice(0, 60) || 'New episode every Tuesday',
+        accent: hex(input.accent, '#34D399'),
+      },
+    };
+  }
+
   if (capability.id === 'hero-intro') {
     const number = str(input.episodeNumber) || '01';
     const title = str(input.episodeTitle) || 'PIPELINE HYGIENE';

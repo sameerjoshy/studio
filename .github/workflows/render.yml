@@ -50,7 +50,7 @@ jobs:
           echo "Job capability: $capability (engine: ${engine:-default})"
 
       - name: Install ffmpeg
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg zip
 
       - name: Install Blender
         if: steps.job.outputs.capability == 'film-character'
@@ -92,6 +92,10 @@ jobs:
       - name: Install OpenMontage dependencies
         if: steps.job.outputs.capability == 'film-documentary' || steps.job.outputs.capability == 'film-cinematic'
         run: pip install --quiet pyyaml "pydantic>=2" jsonschema python-dotenv Pillow numpy requests
+
+      - name: Install Hero Kit dependencies
+        if: steps.job.outputs.capability == 'hero-kit'
+        run: pip install --quiet Pillow
 
       - name: Cache Whisper models
         if: contains(fromJSON('["film-talking-head","film-clip-factory","film-podcast","film-dub","film-screen-demo","film-hybrid"]'), steps.job.outputs.capability)
