@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"
+  data-composition-variables='[
+    {"id":"episodeNumber","type":"string","label":"Episode number","default":"01"},
+    {"id":"episodeTitle","type":"string","label":"Episode title","default":"PIPELINE HYGIENE"},
+    {"id":"accent","type":"color","label":"Accent","default":"#34D399"}
+  ]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #050b14; font-family: Inter, system-ui, sans-serif; }
+      #root {
+        position: relative; width: 1080px; height: 1920px; overflow: hidden;
+        background:
+          radial-gradient(700px 700px at 50% 68%, color-mix(in srgb, var(--accent, #34d399) 18%, transparent), transparent 62%),
+          #050b14;
+      }
+      #barTop { position: absolute; left: 0; top: 0; width: 1080px; height: 10px; background: var(--accent, #34d399); transform-origin: left center; }
+      #barBottom { position: absolute; left: 0; bottom: 0; width: 1080px; height: 10px; background: var(--accent, #34d399); transform-origin: right center; }
+      #label { position: absolute; left: 64px; top: 200px; color: var(--accent, #34d399); font-size: 26px; font-weight: 700; letter-spacing: 0.3em; }
+      #ep { position: absolute; left: 54px; top: 250px; font-family: Sora, Inter, sans-serif; font-size: 190px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; color: #fff; }
+      #ep .hash { color: var(--accent, #34d399); }
+      #sub { position: absolute; left: 68px; top: 470px; color: #94a3b8; font-size: 28px; letter-spacing: 0.12em; }
+      #heroWrap { position: absolute; left: 0; right: 0; bottom: -20px; display: flex; justify-content: center; }
+      #hero { height: 1240px; filter: drop-shadow(0 30px 60px rgba(0,0,0,0.55)); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="hero-sting-v" data-start="0" data-width="1080" data-height="1920" data-duration="2">
+      <div id="barTop"></div>
+      <div id="barBottom"></div>
+
+      <div id="heroWrap" class="clip" data-start="0" data-duration="2" data-track-index="1">
+        <img id="hero" src="poses/pose-point.png" alt="" />
+      </div>
+
+      <div class="clip" data-start="0" data-duration="2" data-track-index="2">
+        <div id="label">GUARDIAN OF GTM</div>
+        <div id="ep"><span class="hash">EP</span> <span id="epNum">01</span></div>
+        <div id="sub">PIPELINE HYGIENE</div>
+      </div>
+    </div>
+
+    <script>
+      gsap.registerPlugin();
+      const vars = window.__hyperframes.getVariables();
+      document.documentElement.style.setProperty('--accent', vars.accent || '#34d399');
+      document.getElementById('epNum').textContent = vars.episodeNumber || '01';
+      document.getElementById('sub').textContent = vars.episodeTitle || 'PIPELINE HYGIENE';
+
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo('#barTop', { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: 'power3.out' }, 0);
+      tl.fromTo('#barBottom', { scaleX: 0 }, { scaleX: 1, duration: 0.35, ease: 'power3.out' }, 0.08);
+      tl.fromTo('#hero', { x: 260, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 0.05);
+      tl.fromTo('#label', { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 0.2);
+      tl.fromTo('#ep', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: 'power3.out' }, 0.25);
+      tl.fromTo('#sub', { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'sine.out' }, 0.5);
+
+      window.__timelines['hero-sting-v'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

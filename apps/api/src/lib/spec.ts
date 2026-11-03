@@ -1,4 +1,4 @@
-import type { Capability } from '../capabilities';
+﻿import type { Capability } from '../capabilities';
 
 const MAX_SLIDES = 12;
 const MAX_BULLETS = 8;
@@ -135,28 +135,12 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     };
   }
 
-  if (capability.id === 'film-explainer') {
-    const brief = str(input.brief) || str(input.source) || str(input.text);
-    if (!brief) return { ok: false, spec: {}, problem: 'An explainer needs a brief.' };
-
-    const requested = Number(input.seconds) || Number(input.duration);
-    const seconds = Number.isFinite(requested) && requested > 0 ? Math.round(requested) : 30;
-
-    return {
-      ok: true,
-      spec: {
-        brief: brief.slice(0, 4000),
-        seconds: Math.min(90, Math.max(12, seconds)),
-        audience: str(input.audience) || 'business audience',
-      },
-    };
-  }
-
   if (capability.id === 'hero-outro') {
     return {
       ok: true,
       spec: {
         cta: str(input.cta).slice(0, 24) || 'SUBSCRIBE',
+        aspect: aspectOf(input),
         tagline: str(input.tagline).slice(0, 60) || 'New episode every Tuesday',
         accent: hex(input.accent, '#34D399'),
       },
@@ -170,6 +154,7 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
         episodeNumber: (str(input.episodeNumber) || '01').slice(0, 4),
         episodeTitle: str(input.episodeTitle).slice(0, 80) || 'PIPELINE HYGIENE',
         accent: hex(input.accent, '#34D399'),
+        aspect: aspectOf(input),
       },
     };
   }
@@ -183,6 +168,7 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
         cta: str(input.cta).slice(0, 24) || 'SUBSCRIBE',
         tagline: str(input.tagline).slice(0, 60) || 'New episode every Tuesday',
         accent: hex(input.accent, '#34D399'),
+        aspect: aspectOf(input),
       },
     };
   }
@@ -196,6 +182,7 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
         episodeNumber: number.slice(0, 4),
         episodeTitle: title.slice(0, 80),
         accent: hex(input.accent, '#34D399'),
+        aspect: aspectOf(input),
       },
     };
   }
@@ -244,6 +231,7 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
         brief: brief.slice(0, 4000),
         seconds: Math.min(90, Math.max(10, seconds)),
         tone: str(input.tone) || 'observational',
+        aspect: aspectOf(input),
       },
     };
   }

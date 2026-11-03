@@ -1,4 +1,4 @@
-export type CapabilityStatus = 'live' | 'beta' | 'planned';
+﻿export type CapabilityStatus = 'live' | 'beta' | 'planned';
 export type StudioName = 'Decks' | 'Films' | 'Voices';
 
 export interface Capability {
@@ -286,7 +286,7 @@ export const CAPABILITIES: Capability[] = [
     licence: 'MIT (our templates) / HyperFrames renderer',
     status: 'beta',
     stages: ['Load the pose pack', 'Render the HyperFrames composition', 'Add the music bed', 'Mux to H.264'],
-    limits: ['Fixed 6 seconds', '1920x1080 at 30 fps', 'Uses the locked GTM Hero pose pack'],
+    limits: ['Fixed 6 seconds', '16:9 or 9:16 at 30 fps', 'Uses the locked GTM Hero pose pack'],
   },
   {
     id: 'hero-outro',
@@ -301,7 +301,7 @@ export const CAPABILITIES: Capability[] = [
     licence: 'MIT (our templates) / HyperFrames renderer',
     status: 'beta',
     stages: ['Load the pose pack', 'Render the composition', 'Add the music bed', 'Mux to H.264'],
-    limits: ['Fixed 5 seconds', '1920x1080 at 30 fps'],
+    limits: ['Fixed 5 seconds', '16:9 or 9:16 at 30 fps'],
   },
   {
     id: 'hero-sting',
@@ -316,7 +316,7 @@ export const CAPABILITIES: Capability[] = [
     licence: 'MIT (our templates) / HyperFrames renderer',
     status: 'beta',
     stages: ['Load the pose pack', 'Render the composition', 'Add the hit', 'Mux to H.264'],
-    limits: ['Fixed 2 seconds', '1920x1080 at 30 fps'],
+    limits: ['Fixed 2 seconds', '16:9 or 9:16 at 30 fps'],
   },
   {
     id: 'hero-kit',
@@ -331,7 +331,7 @@ export const CAPABILITIES: Capability[] = [
     licence: 'MIT (our templates) / HyperFrames renderer',
     status: 'beta',
     stages: ['Render intro, outro, sting', 'Generate three thumbnails', 'Package the ZIP'],
-    limits: ['6s intro, 5s outro, 2s sting', 'Three thumbnail variants', 'Music is a placeholder bed'],
+    limits: ['6s intro, 5s outro, 2s sting', '16:9 or 9:16', 'Three thumbnail variants'],
   },
   {
     id: 'film-motion-graphics',

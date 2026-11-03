@@ -11,6 +11,7 @@ export default async function heroKit({ spec, workDir, progress, root }) {
   const cta = String(spec.cta ?? 'SUBSCRIBE').slice(0, 24);
   const tagline = String(spec.tagline ?? 'New episode every Tuesday').slice(0, 60);
   const accent = /^#[0-9a-f]{6}$/i.test(String(spec.accent ?? '')) ? String(spec.accent) : '#34D399';
+  const aspect = String(spec.aspect) === '9:16' ? '9:16' : '16:9';
 
   const introDir = path.join(workDir, 'intro');
   const outroDir = path.join(workDir, 'outro');
@@ -20,7 +21,7 @@ export default async function heroKit({ spec, workDir, progress, root }) {
 
   await progress('intro', 10, 'Rendering the intro');
   const intro = await heroIntro({
-    spec: { episodeNumber, episodeTitle, accent },
+    spec: { episodeNumber, episodeTitle, accent, aspect },
     workDir: introDir,
     progress,
     root,
@@ -28,7 +29,7 @@ export default async function heroKit({ spec, workDir, progress, root }) {
 
   await progress('outro', 40, 'Rendering the outro');
   const outro = await heroOutro({
-    spec: { cta, tagline, accent },
+    spec: { cta, tagline, accent, aspect },
     workDir: outroDir,
     progress,
     root,
@@ -36,7 +37,7 @@ export default async function heroKit({ spec, workDir, progress, root }) {
 
   await progress('sting', 62, 'Rendering the sting');
   const sting = await heroSting({
-    spec: { episodeNumber, episodeTitle, accent },
+    spec: { episodeNumber, episodeTitle, accent, aspect },
     workDir: stingDir,
     progress,
     root,
@@ -69,13 +70,14 @@ export default async function heroKit({ spec, workDir, progress, root }) {
     [
       `Guardian of GTM - Episode ${episodeNumber}`,
       `Title: ${episodeTitle}`,
+      `Aspect: ${aspect}`,
       '',
-      'intro.mp4   6s, 1920x1080, 30fps',
-      'outro.mp4   5s, 1920x1080, 30fps',
-      'sting.mp4   2s, 1920x1080, 30fps',
+      'intro.mp4   6s, 30fps',
+      'outro.mp4   5s, 30fps',
+      'sting.mp4   2s, 30fps',
       'thumbs/     three 1280x720 thumbnail variants',
       '',
-      'Music is a generated placeholder. Replace it with a licensed track in Studio.',
+      'Music: library track if one is available, otherwise a generated bed.',
     ].join('\n'),
     'utf8',
   );
@@ -97,6 +99,7 @@ export default async function heroKit({ spec, workDir, progress, root }) {
       engine: 'HyperFrames + Pillow',
       episodeNumber,
       episodeTitle,
+      aspect,
       files: ['intro.mp4', 'outro.mp4', 'sting.mp4', 'thumb-a.png', 'thumb-b.png', 'thumb-c.png'],
       duration: 13,
     },

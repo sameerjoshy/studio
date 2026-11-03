@@ -1,0 +1,6 @@
+{
+  "name": "gtm-hero-sting-vertical",
+  "private": true,
+  "type": "module",
+  "scripts": { "check": "npx --yes hyperframes@0.8.226 check", "render": "npx --yes hyperframes@0.8.226 render ." }
+}

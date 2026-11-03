@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { run } from './shell.mjs';
+import { downloadObject, listObjects } from './supabase.mjs';
 
 const HYPERFRAMES = process.env.HYPERFRAMES_VERSION || '0.8.226';
 
@@ -82,6 +83,40 @@ export async function makeBed({ workDir, seconds, kind = 'bed', out }) {
   );
 
   return target;
+}
+
+export async function pickMusic(workDir) {
+  try {
+    const objects = await listObjects('studio-music');
+    const track = (objects ?? []).find((object) => object.name && !object.name.endsWith('/'));
+    if (!track) return null;
+    const file = path.join(workDir, `music${path.extname(track.name) || '.mp3'}`);
+    await downloadObject('studio-music', track.name, file);
+    return file;
+  } catch {
+    return null;
+  }
+}
+
+export async function muxMusic({ video, music, out, volume = 0.35 }) {
+  await run(
+    'ffmpeg',
+    [
+      '-y', '-v', 'error',
+      '-i', video,
+      '-stream_loop', '-1', '-i', music,
+      '-filter_complex', `[1:a]volume=${volume}[a]`,
+      '-map', '0:v',
+      '-map', '[a]',
+      '-shortest',
+      '-c:v', 'copy',
+      '-c:a', 'aac', '-b:a', '160k',
+      '-movflags', '+faststart',
+      out,
+    ],
+    { shell: false, timeoutMs: 180_000 },
+  );
+  return out;
 }
 
 export async function muxAudio({ video, audio, out }) {

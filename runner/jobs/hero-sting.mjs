@@ -3,7 +3,8 @@ import { makeBed, muxAudio, renderTemplate } from '../lib/hero.mjs';
 
 export default async function heroSting({ spec, workDir, progress, root }) {
   const accent = /^#[0-9a-f]{6}$/i.test(String(spec.accent ?? '')) ? String(spec.accent) : '#34D399';
-  const template = path.join(root, 'templates', 'hero-sting');
+  const vertical = String(spec.aspect) === '9:16';
+  const template = path.join(root, 'templates', vertical ? 'hero-sting-vertical' : 'hero-sting');
   const silent = path.join(workDir, 'sting-silent.mp4');
   const final = path.join(workDir, 'hero-sting.mp4');
 
@@ -30,6 +31,12 @@ export default async function heroSting({ spec, workDir, progress, root }) {
     file: final,
     filename: 'hero-sting.mp4',
     contentType: 'video/mp4',
-    meta: { engine: 'HyperFrames', duration: 2, resolution: '1920x1080', fps: 30 },
+    meta: {
+      engine: 'HyperFrames',
+      duration: 2,
+      resolution: vertical ? '1080x1920' : '1920x1080',
+      fps: 30,
+      aspect: vertical ? '9:16' : '16:9',
+    },
   };
 }
