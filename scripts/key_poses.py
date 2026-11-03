@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 # Canonical pose name -> source filename
 POSES = {
@@ -57,20 +57,29 @@ def key_image(src: Path, dst: Path) -> None:
     bg = background_color(arr)
 
     # Patch the Gemini sparkle (bottom-right) with the local background colour.
-    patch = 96
-    x0, y0 = w - patch - 16, h - patch - 16
+    # The sparkle sits just above the corner, so cover a tall corner block.
+    patch_w, patch_h = 180, 230
+    x0, y0 = w - patch_w, h - patch_h
     arr[max(0, y0) : h, max(0, x0) : w] = bg
 
     # Soft chroma key by colour distance to the background.
     distance = np.sqrt(((arr - bg) ** 2).sum(axis=2))
     alpha = np.clip((distance - 42.0) / (92.0 - 42.0), 0.0, 1.0)
 
-    # Mild magenta despill on the fringe: pull R and B toward G.
-    fringe = (alpha > 0.02) & (alpha < 0.98)
+    # Aggressive magenta despill: the render has a pink rim light baked into the
+    # character edge, so pull R and B toward G wherever magenta dominates.
     r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
-    excess = np.clip(np.maximum(r, b) - g, 0, None) * 0.55
-    arr[..., 0] = np.where(fringe, r - excess, r)
-    arr[..., 2] = np.where(fringe, b - excess, b)
+    magenta_score = (r + b) / 2.0 - g
+    mask = magenta_score > 50
+    reduce = np.clip((magenta_score - 50.0) / 80.0, 0.0, 1.0) * 0.9
+    arr[..., 0] = np.where(mask, r - reduce * (r - g), r)
+    arr[..., 2] = np.where(mask, b - reduce * (b - g), b)
+
+    # Shrink the matte by one pixel to drop the outermost fringe.
+    alpha_image = Image.fromarray((alpha * 255).astype(np.uint8), "L").filter(
+        ImageFilter.MinFilter(3)
+    )
+    alpha = np.array(alpha_image).astype(np.float32) / 255.0
 
     rgba = np.dstack([arr.astype(np.uint8), (alpha * 255).astype(np.uint8)])
     keyed = Image.fromarray(rgba, "RGBA")
