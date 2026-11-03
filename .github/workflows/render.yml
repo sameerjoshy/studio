@@ -45,9 +45,15 @@ jobs:
             -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
             -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
             | jq -r '.[0].spec.engine // ""')
+          voice_engine=$(curl -sSf \
+            "$SUPABASE_URL/rest/v1/st_jobs?id=eq.$JOB_ID&select=spec" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            | jq -r '.[0].spec.voice_engine // ""')
           echo "capability=$capability" >> "$GITHUB_OUTPUT"
           echo "engine=$engine" >> "$GITHUB_OUTPUT"
-          echo "Job capability: $capability (engine: ${engine:-default})"
+          echo "voice_engine=$voice_engine" >> "$GITHUB_OUTPUT"
+          echo "Job capability: $capability (engine: ${engine:-default}, voice: ${voice_engine:-none})"
 
       - name: Install ffmpeg
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg zip
@@ -79,7 +85,7 @@ jobs:
       # ---- XTTS (voice clone + xtts dubs) ----
 
       - name: Install XTTS
-        if: steps.job.outputs.capability == 'voice-xtts' || (steps.job.outputs.capability == 'film-dub' && steps.job.outputs.engine == 'xtts')
+        if: steps.job.outputs.capability == 'voice-xtts' || (steps.job.outputs.capability == 'film-dub' && steps.job.outputs.engine == 'xtts') || (steps.job.outputs.capability == 'film-story' && steps.job.outputs.voice_engine == 'xtts')
         continue-on-error: true
         run: pip install --quiet TTS
 
@@ -120,4 +126,5 @@ jobs:
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
           KOKORO_MODEL: runner/models/kokoro-v1.0.onnx
           KOKORO_VOICES: runner/models/voices-v1.0.bin
+          COQUI_TOS_AGREED: "1"
         run: node runner/entry.mjs

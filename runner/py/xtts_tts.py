@@ -7,6 +7,8 @@ import sys
 import tempfile
 import urllib.request
 
+os.environ.setdefault("COQUI_TOS_AGREED", "1")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser()

@@ -254,6 +254,29 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     };
   }
 
+  if (capability.id === 'film-story') {
+    const title = str(input.title) || 'GUARDIAN OF GTM';
+    const voiceEngine = input.voice_engine === 'xtts' ? 'xtts' : 'none';
+    const reference = str(input.reference_url);
+    if (voiceEngine === 'xtts' && !/^https?:\/\//i.test(reference)) {
+      return { ok: false, spec: {}, problem: 'XTTS needs a public reference audio URL.' };
+    }
+    return {
+      ok: true,
+      spec: {
+        title: title.slice(0, 80),
+        tagline: (str(input.tagline) || 'One idea. One guardian.').slice(0, 80),
+        cta: (str(input.cta) || 'gtm-360.com').slice(0, 40),
+        accent: hex(input.accent, '#F5B544'),
+        aspect: aspectOf(input),
+        voice_engine: voiceEngine,
+        reference_url: reference,
+        language: str(input.language) || 'en',
+        script: str(input.script).slice(0, 2000),
+      },
+    };
+  }
+
   if (capability.id === 'voice-kokoro') {
     const text = str(input.text);
     if (!text) return { ok: false, spec: {}, problem: 'Narration needs a script.' };

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en"
+  data-composition-variables='[
+    {"id":"title","type":"string","label":"End title","default":"GUARDIAN OF GTM"},
+    {"id":"tagline","type":"string","label":"End tagline","default":"One idea. One guardian."},
+    {"id":"cta","type":"string","label":"CTA","default":"gtm-360.com"},
+    {"id":"accent","type":"color","label":"Accent","default":"#F5B544"}
+  ]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #050b14; font-family: Inter, system-ui, sans-serif; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #050b14; }
+      .clip { position: absolute; inset: 0; overflow: hidden; }
+      .scene { position: absolute; inset: 0; }
+      .frame { position: absolute; inset: 0; overflow: hidden; }
+      .frame img { width: 100%; height: 100%; object-fit: cover; transform-origin: center; }
+      .scrim {
+        position: absolute; inset: 0; z-index: 3;
+        background:
+          linear-gradient(90deg, rgba(4,10,18,0.86) 0%, rgba(4,10,18,0.48) 44%, transparent 72%),
+          linear-gradient(0deg, rgba(4,10,18,0.82) 0%, transparent 48%);
+      }
+
+      #cold {
+        position: absolute; inset: 0; z-index: 6; pointer-events: none;
+        background: linear-gradient(180deg, rgba(12,44,66,0.30), rgba(4,10,18,0.34));
+        mix-blend-mode: multiply;
+      }
+      #warm {
+        position: absolute; inset: 0; z-index: 6; pointer-events: none; opacity: 0;
+        background:
+          radial-gradient(1100px 850px at 74% 18%, rgba(255,196,110,0.52), transparent 62%),
+          linear-gradient(180deg, rgba(255,170,80,0.16), transparent 58%);
+        mix-blend-mode: screen;
+      }
+      #grain {
+        position: absolute; inset: 0; z-index: 7; pointer-events: none; opacity: 0.07;
+        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/></svg>");
+      }
+      #vignette {
+        position: absolute; inset: 0; z-index: 8; pointer-events: none;
+        background: radial-gradient(1200px 820px at 50% 50%, transparent 50%, rgba(0,0,0,0.58) 100%);
+      }
+      #corner-shade {
+        position: absolute; inset: 0; z-index: 9; pointer-events: none;
+        background: radial-gradient(320px 230px at 100% 100%, rgba(5,11,20,0.99) 0%, rgba(5,11,20,0.92) 42%, transparent 74%);
+      }
+
+      #copyLayer { z-index: 20; }
+      .beat { position: absolute; left: 120px; bottom: 118px; width: 1040px; opacity: 0; }
+      .beat.center { left: 50%; bottom: 50%; width: 1400px; transform: translate(-50%, 50%); text-align: center; }
+      .beat.top { top: 120px; bottom: auto; }
+      .kicker {
+        color: var(--accent, #F5B544); font-size: 28px; font-weight: 700;
+        letter-spacing: 0.34em; text-transform: uppercase; margin-bottom: 18px;
+      }
+      .beat h1 {
+        font-family: Sora, Inter, sans-serif; font-size: 96px; font-weight: 800;
+        line-height: 0.98; letter-spacing: -0.03em; color: #ffffff;
+        text-shadow: 0 6px 40px rgba(0,0,0,0.72);
+      }
+      .beat.center h1 { font-size: 132px; }
+      .beat p {
+        margin-top: 22px; color: rgba(226,232,240,0.86); font-size: 34px;
+        font-weight: 500; line-height: 1.4; max-width: 860px;
+        text-shadow: 0 4px 24px rgba(0,0,0,0.7);
+      }
+      .beat.center p { margin-left: auto; margin-right: auto; }
+
+      #rain { z-index: 10; }
+      .rain-layer {
+        position: absolute; left: -10%; top: -100%; width: 120%; height: 300%;
+        background-image: repeating-linear-gradient(100deg, transparent 0 26px, rgba(190,220,255,0.16) 26px 27px, transparent 27px 54px);
+        background-size: 320px 320px;
+      }
+      .rain-layer.b {
+        background-image: repeating-linear-gradient(96deg, transparent 0 40px, rgba(200,230,255,0.10) 40px 41px, transparent 41px 80px);
+        background-size: 460px 460px;
+      }
+
+      #rays {
+        z-index: 11; opacity: 0; pointer-events: none;
+        background:
+          conic-gradient(from 188deg at 64% 10%, transparent 0deg, rgba(255,222,150,0.22) 7deg, transparent 19deg, transparent 38deg, rgba(255,222,150,0.14) 46deg, transparent 60deg),
+          radial-gradient(700px 520px at 66% 12%, rgba(255,210,130,0.18), transparent 70%);
+        mix-blend-mode: screen;
+      }
+
+      #smash { z-index: 5; }
+      .smash-bg { position: absolute; inset: 0; background: radial-gradient(1200px 820px at 60% 40%, #173a52 0%, #0a1a28 55%, #04080e 100%); }
+      #burst {
+        position: absolute; inset: 0; opacity: 0;
+        background: radial-gradient(circle at 62% 46%, rgba(255,244,214,0.95) 0%, rgba(255,190,90,0.55) 18%, rgba(255,150,60,0.18) 38%, transparent 62%);
+      }
+      #fly { position: absolute; right: 70px; top: 40px; height: 940px; opacity: 0; filter: drop-shadow(0 40px 80px rgba(0,0,0,0.6)); }
+      #land { position: absolute; left: 66%; bottom: 30px; height: 900px; opacity: 0; filter: drop-shadow(0 50px 90px rgba(0,0,0,0.7)); }
+      #shock {
+        position: absolute; left: 66%; top: 54%; width: 300px; height: 300px; opacity: 0;
+        border: 5px solid rgba(255,224,160,0.85); border-radius: 50%;
+        transform: translate(-50%, -50%) scale(0.2);
+        box-shadow: 0 0 60px rgba(255,200,110,0.65);
+      }
+      #flash { z-index: 30; background: #ffffff; opacity: 0; pointer-events: none; }
+
+      #resolution { z-index: 6; }
+      #chartCard {
+        position: absolute; right: 130px; top: 210px; width: 520px; height: 350px;
+        padding: 30px 34px; border-radius: 22px; opacity: 0;
+        background: rgba(8,18,30,0.62); border: 1px solid rgba(245,181,68,0.38);
+        box-shadow: 0 30px 80px rgba(0,0,0,0.45); backdrop-filter: blur(12px);
+      }
+      #chartCard .label { color: rgba(226,232,240,0.72); font-size: 28px; font-weight: 600; letter-spacing: 0.18em; }
+      #chartCard .value { color: #7EF0B0; font-family: Sora, Inter, sans-serif; font-size: 64px; font-weight: 800; margin-top: 6px; }
+      #chartCard svg { width: 100%; height: 150px; margin-top: 8px; }
+
+      #chartFall {
+        position: absolute; left: 1176px; top: 442px; width: 340px; height: 230px; z-index: 4;
+        padding: 16px 18px; border-radius: 14px; background: rgba(6,14,24,0.55);
+        border: 1px solid rgba(255,90,90,0.35); opacity: 0;
+      }
+      #chartFall svg { width: 100%; height: 100%; }
+
+      #end { z-index: 7; }
+      #img7 { filter: saturate(1.06) contrast(1.03) brightness(1.02); }
+      .end-scrim {
+        position: absolute; inset: 0; z-index: 3;
+        background:
+          linear-gradient(0deg, rgba(4,10,18,0.94) 0%, rgba(4,10,18,0.58) 30%, transparent 62%),
+          linear-gradient(90deg, rgba(4,10,18,0.72) 0%, transparent 52%);
+      }
+      #endCopy { position: absolute; left: 120px; bottom: 108px; z-index: 5; }
+      #endMark { width: 96px; height: 58px; margin-bottom: 22px; opacity: 0; }
+      #endTitle {
+        font-family: Sora, Inter, sans-serif; font-size: 86px; font-weight: 800;
+        letter-spacing: -0.02em; color: #ffffff; opacity: 0;
+        text-shadow: 0 6px 40px rgba(0,0,0,0.7);
+      }
+      #endTag { margin-top: 16px; color: rgba(226,232,240,0.82); font-size: 32px; font-weight: 500; opacity: 0; }
+      #endCta {
+        margin-top: 26px; display: inline-block; padding: 14px 30px; border-radius: 999px;
+        border: 2px solid rgba(245,181,68,0.55); color: var(--accent, #F5B544);
+        font-size: 28px; font-weight: 700; letter-spacing: 0.14em; opacity: 0;
+      }
+
+      #confetti { z-index: 12; pointer-events: none; }
+      .conf { position: absolute; width: 12px; height: 22px; border-radius: 2px; opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="story-30s" data-start="0" data-width="1920" data-height="1080" data-duration="30">
+
+      <div id="scene1" class="clip" data-start="0" data-duration="4.6" data-track-index="1">
+        <div class="frame"><img id="img1" src="assets/scene-1.jpg" alt="" /></div>
+        <div class="scrim"></div>
+      </div>
+
+      <div id="scene2" class="clip" data-start="3.8" data-duration="4.8" data-track-index="2">
+        <div class="frame"><img id="img2" src="assets/scene-2.jpg" alt="" /></div>
+        <div class="scrim"></div>
+      </div>
+
+      <div id="scene3" class="clip" data-start="7.8" data-duration="4.8" data-track-index="3">
+        <div class="frame"><img id="img3" src="assets/scene-3.jpg" alt="" /></div>
+        <div class="scrim"></div>
+        <div id="chartFall">
+          <svg viewBox="0 0 320 200" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="fallFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(255,86,86,0.45)" />
+                <stop offset="100%" stop-color="rgba(255,86,86,0)" />
+              </linearGradient>
+            </defs>
+            <path d="M0 150 L0 28 L40 40 L80 34 L120 66 L160 80 L200 112 L240 138 L280 166 L320 190 L320 200 L0 200 Z" fill="url(#fallFill)" />
+            <polyline points="0,28 40,40 80,34 120,66 160,80 200,112 240,138 280,166 320,190" fill="none" stroke="#FF5A5A" stroke-width="4" stroke-linecap="round" />
+            <circle cx="320" cy="190" r="7" fill="#FF5A5A" />
+          </svg>
+        </div>
+      </div>
+
+      <div id="scene4" class="clip" data-start="11.8" data-duration="5.0" data-track-index="4">
+        <div class="frame"><img id="img4" src="assets/scene-4.jpg" alt="" /></div>
+        <div class="scrim"></div>
+      </div>
+
+      <div id="smash" class="clip" data-start="15.8" data-duration="6.4" data-track-index="5">
+        <div class="smash-bg"></div>
+        <div id="burst"></div>
+        <img id="fly" src="assets/pose-fly.png" alt="" />
+        <img id="land" src="assets/pose-land.png" alt="" />
+        <div id="shock"></div>
+      </div>
+
+      <div id="resolution" class="clip" data-start="21.6" data-duration="5.8" data-track-index="6">
+        <div class="frame"><img id="img6" src="assets/scene-1-warm.jpg" alt="" /></div>
+        <div class="scrim"></div>
+        <div id="chartCard" data-layout-allow-occlusion>
+          <div class="label" data-layout-allow-occlusion>PIPELINE</div>
+          <div class="value" data-layout-allow-occlusion>+38%</div>
+          <svg viewBox="0 0 440 150" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="riseFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="rgba(126,240,176,0.42)" />
+                <stop offset="100%" stop-color="rgba(126,240,176,0)" />
+              </linearGradient>
+            </defs>
+            <path d="M0 128 L0 118 L55 110 L110 96 L165 84 L220 70 L275 54 L330 36 L385 22 L440 10 L440 150 L0 150 Z" fill="url(#riseFill)" />
+            <polyline points="0,118 55,110 110,96 165,84 220,70 275,54 330,36 385,22 440,10" fill="none" stroke="#7EF0B0" stroke-width="4" stroke-linecap="round" />
+            <circle cx="440" cy="10" r="7" fill="#7EF0B0" />
+          </svg>
+        </div>
+      </div>
+
+      <div id="end" class="clip" data-start="26.4" data-duration="3.6" data-track-index="7">
+        <div class="frame"><img id="img7" src="assets/scene-5.jpg" alt="" /></div>
+        <div class="end-scrim"></div>
+        <div id="endCopy" data-layout-allow-occlusion>
+          <svg id="endMark" viewBox="0 0 100 60" aria-hidden="true">
+            <path d="M6 5 L46 30 L6 55 Z" fill="var(--accent, #F5B544)" />
+            <path d="M94 5 L54 30 L94 55 Z" fill="#ffffff" />
+          </svg>
+          <div id="endTitle" data-layout-allow-occlusion>GUARDIAN OF GTM</div>
+          <div id="endTag" data-layout-allow-occlusion>One idea. One guardian.</div>
+          <div id="endCta" data-layout-allow-occlusion>gtm-360.com</div>
+        </div>
+      </div>
+
+      <div id="rain" class="clip" data-start="0" data-duration="16.2" data-track-index="10">
+        <div class="rain-layer a"></div>
+        <div class="rain-layer b"></div>
+      </div>
+
+      <div id="rays" class="clip" data-start="15.8" data-duration="14.2" data-track-index="11"></div>
+
+      <div id="confetti" class="clip" data-start="21.8" data-duration="5.0" data-track-index="12"></div>
+
+      <div id="copyLayer" class="clip" data-start="0" data-duration="30" data-track-index="20">
+        <div class="beat" id="b1">
+          <div class="kicker">Q3</div>
+          <h1>SALES ARE FALLING.</h1>
+          <p>Pipeline is down. The forecast is red.</p>
+        </div>
+        <div class="beat" id="b2">
+          <div class="kicker">PIPELINE</div>
+          <h1>LEADS DRIED UP.</h1>
+          <p>Retention is slipping. Every meeting is a fight.</p>
+        </div>
+        <div class="beat" id="b3">
+          <div class="kicker">THE PROBLEM</div>
+          <h1>NOTHING IS WORKING.</h1>
+          <p>More activity. Less traction.</p>
+        </div>
+        <div class="beat" id="b4">
+          <div class="kicker">THE TURN</div>
+          <h1>UNTIL NOW.</h1>
+          <p>The GTM Hero enters the weather.</p>
+        </div>
+        <div class="beat top" id="b5">
+          <h1>BREAK THROUGH.</h1>
+          <p>The clouds split. The signal returns.</p>
+        </div>
+        <div class="beat" id="b6">
+          <div class="kicker">AFTER</div>
+          <h1>PIPELINE RECOVERS.</h1>
+          <p>Customers stay. Teams win again.</p>
+        </div>
+      </div>
+
+      <div id="flash" class="clip" data-start="16.0" data-duration="1.1" data-track-index="30"></div>
+
+      <div id="cold"></div>
+      <div id="warm"></div>
+      <div id="grain"></div>
+      <div id="vignette"></div>
+      <div id="corner-shade"></div>
+    </div>
+
+    <script>
+      gsap.registerPlugin();
+      const vars = window.__hyperframes.getVariables();
+
+      document.documentElement.style.setProperty('--accent', vars.accent || '#F5B544');
+      document.getElementById('endTitle').textContent = vars.title || 'GUARDIAN OF GTM';
+      document.getElementById('endTag').textContent = vars.tagline || 'One idea. One guardian.';
+      document.getElementById('endCta').textContent = vars.cta || 'gtm-360.com';
+
+      const tl = gsap.timeline({ paused: true });
+      let seed = 1337;
+      const rand = () => {
+        seed |= 0;
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+      const show = (sel, at, dur = 0.6, y = 26) =>
+        tl.fromTo(sel, { opacity: 0, y }, { opacity: 1, y: 0, duration: dur, ease: 'power3.out' }, at);
+      const hide = (sel, at, dur = 0.45) =>
+        tl.to(sel, { opacity: 0, duration: dur, ease: 'sine.inOut' }, at);
+
+      tl.fromTo('#img1', { scale: 1.14, x: -24 }, { scale: 1.02, x: 0, duration: 5.0, ease: 'sine.out' }, 0);
+      tl.fromTo('#img2', { scale: 1.12, x: 22 }, { scale: 1.02, x: 0, duration: 5.0, ease: 'sine.out' }, 3.8);
+      tl.fromTo('#img3', { scale: 1.12, y: 18 }, { scale: 1.02, y: 0, duration: 5.0, ease: 'sine.out' }, 7.8);
+      tl.fromTo('#img4', { scale: 1.14, y: 26 }, { scale: 1.02, y: 0, duration: 5.2, ease: 'sine.out' }, 11.8);
+      tl.fromTo('#img6', { scale: 1.10, x: 18 }, { scale: 1.01, x: 0, duration: 6.0, ease: 'sine.out' }, 21.6);
+      tl.fromTo('#img7', { scale: 1.08 }, { scale: 1.0, duration: 3.6, ease: 'sine.out' }, 26.4);
+
+      tl.to('#img1', { opacity: 0, duration: 0.45, ease: 'sine.inOut' }, 3.75);
+      tl.to('#img2', { opacity: 0, duration: 0.45, ease: 'sine.inOut' }, 7.75);
+      tl.to('#img3', { opacity: 0, duration: 0.45, ease: 'sine.inOut' }, 11.75);
+      tl.to('#img4', { opacity: 0, duration: 0.5, ease: 'sine.inOut' }, 15.7);
+      tl.fromTo('#smash .smash-bg', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'sine.out' }, 15.8);
+      tl.to('#resolution', { opacity: 0, duration: 0.5, ease: 'sine.inOut' }, 26.3);
+
+      show('#b1', 0.55);
+      hide('#b1', 3.7);
+      show('#b2', 4.15);
+      hide('#b2', 7.7);
+      show('#b3', 8.15);
+      hide('#b3', 11.7);
+      show('#b4', 12.15);
+      hide('#b4', 15.6);
+      show('#b5', 17.0, 0.7, 40);
+      hide('#b5', 21.4);
+      show('#b6', 22.15);
+      hide('#b6', 26.55);
+
+      tl.fromTo('#chartFall', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 8.5);
+      tl.to('#chartFall', { opacity: 0, duration: 0.4, ease: 'sine.inOut' }, 11.5);
+      tl.fromTo('#chartCard', { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 22.5);
+
+      tl.fromTo('#burst', { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1.15, duration: 0.8, ease: 'power2.out' }, 16.3);
+      tl.to('#burst', { opacity: 0.55, duration: 1.0, ease: 'sine.inOut' }, 17.4);
+      tl.fromTo('#flash', { opacity: 0 }, { opacity: 1, duration: 0.12, ease: 'none' }, 16.18);
+      tl.to('#flash', { opacity: 0, duration: 0.55, ease: 'power2.in' }, 16.42);
+
+      tl.fromTo('#fly', { opacity: 0, x: 620, rotate: 8, scale: 0.9 }, { opacity: 1, x: 0, rotate: 0, scale: 1, duration: 1.0, ease: 'power3.out' }, 16.35);
+      tl.to('#fly', { opacity: 0, duration: 0.35, ease: 'sine.in' }, 17.35);
+      tl.fromTo('#land', { opacity: 0, xPercent: -50, scale: 1.32, y: 30 }, { opacity: 1, xPercent: -50, scale: 1, y: 0, duration: 0.7, ease: 'power4.out' }, 17.35);
+      tl.fromTo('#shock', { opacity: 1, scale: 0.2 }, { opacity: 0, scale: 4.2, duration: 1.1, ease: 'power2.out' }, 17.4);
+      tl.to('#land', { y: -8, duration: 2.4, ease: 'sine.inOut' }, 18.3);
+
+      tl.fromTo('#rays', { opacity: 0, rotate: -2 }, { opacity: 0.85, rotate: 2, duration: 3.0, ease: 'sine.out' }, 16.6);
+      tl.fromTo('#cold', { opacity: 1 }, { opacity: 0.22, duration: 3.0, ease: 'sine.inOut' }, 15.8);
+      tl.fromTo('#warm', { opacity: 0 }, { opacity: 1, duration: 3.2, ease: 'sine.inOut' }, 15.8);
+
+      tl.fromTo('.rain-layer.a', { y: 0 }, { y: 320, duration: 0.7, ease: 'none', repeat: 22 }, 0);
+      tl.fromTo('.rain-layer.b', { y: 0 }, { y: 460, duration: 1.1, ease: 'none', repeat: 14 }, 0);
+      tl.to('#rain', { opacity: 0, duration: 0.7, ease: 'sine.inOut' }, 15.4);
+
+      tl.fromTo('#endMark', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 26.6);
+      tl.fromTo('#endTitle', { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, 26.75);
+      tl.fromTo('#endTag', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: 'sine.out' }, 26.95);
+      tl.fromTo('#endCta', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'sine.out' }, 27.15);
+
+      const colors = ['#F5B544', '#7EF0B0', '#5EEAD4', '#FFFFFF', '#FF9F5A'];
+      const confetti = document.getElementById('confetti');
+      for (let i = 0; i < 28; i += 1) {
+        const piece = document.createElement('div');
+        piece.className = 'conf';
+        piece.style.left = `${120 + rand() * 1680}px`;
+        piece.style.top = '-40px';
+        piece.style.background = colors[i % colors.length];
+        piece.style.width = `${8 + rand() * 10}px`;
+        piece.style.height = `${14 + rand() * 16}px`;
+        confetti.appendChild(piece);
+        tl.fromTo(
+          piece,
+          { opacity: 0, y: -40, rotate: 0 },
+          {
+            opacity: 0.9,
+            y: 1180,
+            x: `+=${-80 + rand() * 160}`,
+            rotate: 360 + rand() * 360,
+            duration: 2.2 + rand() * 1.8,
+            ease: 'none',
+          },
+          21.9 + rand() * 1.2,
+        );
+        tl.to(piece, { opacity: 0, duration: 0.4, ease: 'sine.out' }, 26.4 + rand() * 0.3);
+      }
+
+      window.__timelines['story-30s'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

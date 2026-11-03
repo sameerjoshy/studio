@@ -84,6 +84,8 @@ function buildSystemPrompt(): string {
                 ? '{ "brief": string, "seconds": number, "audience": string, "aspect"?: "16:9"|"9:16"|"1:1" }'
             : capability.id === 'film-brand'
           ? '{ "title": string, "subtitle": string, "bullets": [string, string, string], "accent": "#RRGGBB", "aspect"?: "16:9"|"9:16"|"1:1" }'
+          : capability.id === 'film-story'
+          ? '{ "title": string, "tagline": string, "cta": string, "accent": "#RRGGBB", "voice_engine"?: "none"|"xtts", "reference_url"?: string, "language"?: string, "script"?: string, "aspect"?: "16:9"|"9:16"|"1:1" }'
           : capability.id === 'voice-kokoro'
             ? '{ "text": string, "voice": string, "speed": number, "engine"?: "kokoro"|"edge" }'
             : capability.id === 'voice-xtts'

@@ -88,6 +88,37 @@ export const CAPABILITIES: Capability[] = [
     ],
   },
   {
+    id: 'film-story',
+    studio: 'Films',
+    name: 'Story Film',
+    outcome: 'A 30-second narrative film: the problem, the turn, the GTM Hero, and the win.',
+    bestFor: [
+      'YouTube pre-rolls and brand films',
+      'Turning a GTM problem into a story',
+      'A repeatable hero-led narrative template',
+    ],
+    inputs: ['Title', 'Tagline', 'CTA', 'Accent colour', 'Voice (none or XTTS)', 'Reference clip URL'],
+    examples: [
+      'A 30-second story film about falling pipeline and the GTM Hero',
+      'Make a hero-led brand film with a dark-to-light arc',
+    ],
+    estTime: '6-10 minutes',
+    cost: 'Free (GitHub Actions)',
+    licence: 'MIT (HyperFrames) + CPML non-commercial (XTTS)',
+    status: 'beta',
+    stages: [
+      'Render the five-beat story composition',
+      'Clone the reference voice (optional)',
+      'Mix the dark-to-hopeful score',
+      'Encode H.264 with ffmpeg',
+    ],
+    limits: [
+      '1080p30, 16:9 by default',
+      'The story copy is fixed; title, tagline, and CTA are editable',
+      'XTTS is non-commercial and slow on a 2-vCPU runner',
+    ],
+  },
+  {
     id: 'film-explainer',
     studio: 'Films',
     name: 'Animated Explainer',

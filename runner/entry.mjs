@@ -20,6 +20,7 @@ const JOBS = {
   'deck-native': () => import('./jobs/deck-native.mjs'),
   'deck-pptmaster': () => import('./jobs/deck-pptmaster.mjs'),
   'film-brand': () => import('./jobs/film-brand.mjs'),
+  'film-story': () => import('./jobs/film-story.mjs'),
   'film-documentary': () => import('./jobs/film-documentary.mjs'),
   'film-cinematic': () => import('./jobs/film-documentary.mjs'),
   'film-explainer': () => import('./jobs/film-explainer.mjs'),

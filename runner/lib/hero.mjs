@@ -138,3 +138,62 @@ export async function muxAudio({ video, audio, out }) {
   );
   return out;
 }
+
+export async function pickMusicTracks(workDir, count = 2) {
+  try {
+    const objects = await listObjects('studio-music');
+    const names = (objects ?? [])
+      .map((object) => object.name)
+      .filter((name) => name && !name.endsWith('/'));
+    if (!names.length) return [];
+
+    const rank = (name) => {
+      const value = name.toLowerCase();
+      if (value.includes('dark')) return 0;
+      if (value.includes('hope') || value.includes('light') || value.includes('inspir')) return 2;
+      return 1;
+    };
+
+    const ordered = [...names].sort((a, b) => rank(a) - rank(b));
+    const files = [];
+    for (const name of ordered.slice(0, Math.max(1, count))) {
+      const file = path.join(workDir, `music-${files.length}${path.extname(name) || '.mp3'}`);
+      await downloadObject('studio-music', name, file);
+      files.push(file);
+    }
+    return files;
+  } catch {
+    return [];
+  }
+}
+
+export async function mixMusicPair({ workDir, dark, hopeful, out }) {
+  const target = out || path.join(workDir, 'score.m4a');
+  const filter = [
+    '[0:a]atrim=0:17,asetpts=PTS-STARTPTS,volume=0.75,lowpass=f=1100,afade=t=out:st=15.5:d=1.5[a0]',
+    '[1:a]atrim=0:14,asetpts=PTS-STARTPTS,volume=0.85,afade=t=in:st=0:d=1.5,adelay=15500|15500[a1]',
+    '[a0][a1]amix=inputs=2:duration=longest:normalize=0,alimiter=limit=0.95,afade=t=out:st=28.5:d=1.5,loudnorm=I=-18:TP=-1.5:LRA=11[a]',
+  ].join(';');
+
+  await run(
+    'ffmpeg',
+    ['-y', '-v', 'error', '-i', dark, '-i', hopeful, '-filter_complex', filter, '-map', '[a]', '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', target],
+    { shell: false, timeoutMs: 180_000 },
+  );
+  return target;
+}
+
+export async function mixVoiceMusic({ video, music, voice, out, musicVolume = 0.35 }) {
+  const filter = [
+    `[1:a]volume=${musicVolume},atrim=0:30,afade=t=out:st=28.5:d=1.5[m]`,
+    '[2:a]volume=1.0,adelay=800|800[v]',
+    '[m][v]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]',
+  ].join(';');
+
+  await run(
+    'ffmpeg',
+    ['-y', '-v', 'error', '-i', video, '-i', music, '-i', voice, '-filter_complex', filter, '-map', '0:v', '-map', '[a]', '-ar', '48000', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', out],
+    { shell: false, timeoutMs: 180_000 },
+  );
+  return out;
+}
