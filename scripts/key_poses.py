@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Key the magenta pose renders into transparent PNGs for the Hero Kit.
 
 - patches the Gemini sparkle in the bottom-right corner
@@ -58,8 +58,8 @@ def key_image(src: Path, dst: Path) -> None:
 
     # Patch the Gemini sparkle (bottom-right) with the local background colour.
     # The sparkle sits just above the corner, so cover a tall corner block.
-    patch_w, patch_h = 180, 230
-    x0, y0 = w - patch_w, h - patch_h
+    patch_w, patch_h = 100, 100
+    x0, y0 = w - 125, h - 155
     arr[max(0, y0) : h, max(0, x0) : w] = bg
 
     # Soft chroma key by colour distance to the background.
