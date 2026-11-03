@@ -139,6 +139,23 @@ The blocker is art, not plumbing: primitives produce a blockout, not the
 reference-quality render from the Gemini concept. Options are a proper 3D asset,
 a GPU image-to-3D pass, or a 2.5D parallax treatment of the Gemini still.
 
+## Guardian of GTM — Hero Kit
+
+The series kit is one job: `hero-kit`.
+
+- **Pose pack**: 11 keyed poses under `runner/templates/hero-kit/poses/`. The
+  Gemini renders are magenta-keyed per image, despilled, watermark-patched, and
+  cropped with padding by `scripts/key_poses.py`.
+- **Templates**: `hero-intro` (6 s), `hero-outro` (5 s), `hero-sting` (2 s),
+  all HyperFrames/GSAP at 1920x1080/30 fps.
+- **Thumbnails**: three 1280x720 variants from `scripts/make_thumbnails.py`
+  (Pillow; picks a system font on Linux or Windows).
+- **Output**: a ZIP containing `intro.mp4`, `outro.mp4`, `sting.mp4`,
+  `thumbs/thumb-a|b|c.png`, and `README.txt`.
+- **Music**: a generated bed is muxed in; replace it with a licensed track from
+  the private music library when one is available.
+- **Measured**: the full kit renders in about 2–4 minutes on the free runner.
+
 ## Access
 
 Studio is open: there is no login. The UI is public and every generation route
