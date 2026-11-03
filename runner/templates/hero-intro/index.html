@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en"
+  data-composition-variables='[
+    {"id":"episodeNumber","type":"string","label":"Episode number","default":"01"},
+    {"id":"episodeTitle","type":"string","label":"Episode title","default":"PIPELINE HYGIENE"},
+    {"id":"accent","type":"color","label":"Accent","default":"#34D399"}
+  ]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #050b14; font-family: Inter, system-ui, sans-serif; }
+      #root {
+        position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        background:
+          radial-gradient(1100px 640px at 66% 34%, color-mix(in srgb, var(--accent, #34d399) 18%, transparent), transparent 62%),
+          radial-gradient(900px 620px at 18% 82%, rgba(79, 70, 229, 0.18), transparent 62%),
+          #050b14;
+      }
+      .clip { position: absolute; inset: 0; overflow: hidden; }
+
+      #grid {
+        position: absolute; inset: 0; z-index: 1; opacity: 0.5;
+        background-image:
+          linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+        background-size: 84px 84px;
+        mask-image: radial-gradient(900px 620px at 60% 45%, #000 0%, transparent 78%);
+      }
+      #vignette {
+        position: absolute; inset: 0; z-index: 2; pointer-events: none;
+        background: radial-gradient(1200px 820px at 50% 50%, transparent 52%, rgba(0,0,0,0.55) 100%);
+      }
+
+      #corner { position: absolute; top: 54px; left: 70px; z-index: 6; display: flex; align-items: center; gap: 14px; opacity: 0.72; }
+      #corner svg { width: 44px; height: 28px; }
+      #corner span { color: #e2e8f0; font-size: 28px; font-weight: 700; letter-spacing: 0.22em; }
+
+      #flyLayer { z-index: 3; }
+      #fly { position: absolute; right: 24px; top: 24px; height: 1010px; filter: drop-shadow(0 40px 80px rgba(0,0,0,0.55)); }
+      #speed { position: absolute; inset: 0; z-index: 2; opacity: 0; }
+      .streak { position: absolute; height: 3px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--accent, #34d399)); }
+
+      #titleLayer { z-index: 4; }
+      #eyebrow {
+        position: absolute; left: 132px; top: 300px;
+        color: var(--accent, #34d399); font-size: 28px; font-weight: 700; letter-spacing: 0.34em;
+      }
+      #rule { position: absolute; left: 132px; top: 356px; width: 110px; height: 8px; background: var(--accent, #34d399); transform-origin: left center; }
+      #title {
+        position: absolute; left: 126px; top: 392px; width: 1000px;
+        font-family: Sora, Inter, sans-serif; font-size: 108px; font-weight: 800; letter-spacing: -0.03em;
+        line-height: 1.0; color: #ffffff;
+      }
+      #title .accent { color: var(--accent, #34d399); }
+      #episode {
+        position: absolute; left: 132px; top: 720px;
+        color: #cbd5e1; font-size: 30px; font-weight: 500; letter-spacing: 0.14em;
+      }
+      #episode b { color: #ffffff; font-weight: 700; }
+
+      #stanceLayer { z-index: 5; }
+      #stance { position: absolute; right: 120px; bottom: -6px; height: 1040px; filter: drop-shadow(0 40px 80px rgba(0,0,0,0.55)); }
+      #heroTag {
+        position: absolute; left: 132px; top: 470px;
+        display: inline-flex; align-items: center; gap: 16px;
+        padding: 18px 28px; border: 2px solid rgba(52,211,153,0.5); border-radius: 999px;
+        background: rgba(5,11,20,0.65); backdrop-filter: blur(6px);
+      }
+      #heroTag svg { width: 46px; height: 28px; }
+      #heroTag span { color: #ffffff; font-family: Sora, Inter, sans-serif; font-size: 34px; font-weight: 700; letter-spacing: 0.16em; }
+      #tagline { position: absolute; left: 136px; top: 590px; width: 760px; color: #94a3b8; font-size: 30px; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="hero-intro" data-start="0" data-width="1920" data-height="1080" data-duration="6">
+      <div id="grid"></div>
+      <div id="vignette"></div>
+
+      <div id="corner">
+        <svg viewBox="0 0 100 60" aria-hidden="true">
+          <path d="M6 5 L46 30 L6 55 Z" fill="var(--accent, #34d399)" />
+          <path d="M94 5 L54 30 L94 55 Z" fill="#ffffff" />
+        </svg>
+        <span>GTM-360</span>
+      </div>
+
+      <div id="flyLayer" class="clip" data-start="0" data-duration="4.2" data-track-index="1">
+        <div id="speed">
+          <div class="streak" style="left:1080px; top:250px; width:420px;"></div>
+          <div class="streak" style="left:1180px; top:420px; width:520px;"></div>
+          <div class="streak" style="left:1020px; top:610px; width:360px;"></div>
+          <div class="streak" style="left:1240px; top:760px; width:440px;"></div>
+        </div>
+        <img id="fly" src="poses/pose-fly.png" alt="" />
+      </div>
+
+      <div id="titleLayer" class="clip" data-start="2.4" data-duration="1.8" data-track-index="2">
+        <div id="eyebrow">GTM-360 PRESENTS</div>
+        <div id="rule"></div>
+        <div id="title">GUARDIAN<br />OF <span class="accent">GTM</span></div>
+        <div id="episode">EPISODE <b id="epNum">01</b> · <b id="epTitle">PIPELINE HYGIENE</b></div>
+      </div>
+
+      <div id="stanceLayer" class="clip" data-start="4.2" data-duration="1.8" data-track-index="3">
+        <img id="stance" src="poses/pose-stance.png" alt="" />
+        <div id="heroTag">
+          <svg viewBox="0 0 100 60" aria-hidden="true">
+            <path d="M6 5 L46 30 L6 55 Z" fill="var(--accent, #34d399)" />
+            <path d="M94 5 L54 30 L94 55 Z" fill="#ffffff" />
+          </svg>
+          <span>GTM HERO</span>
+        </div>
+        <div id="tagline">The guardian of go-to-market.<br />One idea per episode, no fluff.</div>
+      </div>
+    </div>
+
+    <script>
+      gsap.registerPlugin();
+      const vars = window.__hyperframes.getVariables();
+
+      document.documentElement.style.setProperty('--accent', vars.accent || '#34d399');
+      document.getElementById('epNum').textContent = vars.episodeNumber || '01';
+      document.getElementById('epTitle').textContent = vars.episodeTitle || 'PIPELINE HYGIENE';
+
+      const tl = gsap.timeline({ paused: true });
+
+      tl.fromTo('#grid', { opacity: 0 }, { opacity: 0.5, duration: 1.2, ease: 'sine.out' }, 0);
+      tl.fromTo('#fly', { x: 520, opacity: 0, rotate: 6 }, { x: 0, opacity: 1, rotate: 0, duration: 1.15, ease: 'power3.out' }, 0.15);
+      tl.fromTo('#speed', { opacity: 0 }, { opacity: 0.9, duration: 0.3, ease: 'sine.out' }, 0.2);
+      tl.to('#speed', { opacity: 0, duration: 0.5, ease: 'sine.inOut' }, 1.3);
+      tl.to('#fly', { x: 120, opacity: 0, duration: 0.6, ease: 'power2.in' }, 3.55);
+
+      tl.fromTo('#eyebrow', { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 2.55);
+      tl.fromTo('#rule', { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: 'power3.out' }, 2.7);
+      tl.fromTo('#title', { y: 34, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out' }, 2.85);
+      tl.fromTo('#episode', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: 'power3.out' }, 3.35);
+
+      tl.fromTo('#stance', { opacity: 0, scale: 0.95, y: 26 }, { opacity: 1, scale: 1, y: 0, duration: 0.75, ease: 'power3.out' }, 4.2);
+      tl.fromTo('#heroTag', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 4.75);
+      tl.fromTo('#tagline', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'sine.out' }, 4.95);
+
+      window.__timelines['hero-intro'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

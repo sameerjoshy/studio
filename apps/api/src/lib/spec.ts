@@ -152,6 +152,19 @@ export function validateSpec(capability: Capability, raw: unknown): Validation {
     };
   }
 
+  if (capability.id === 'hero-intro') {
+    const number = str(input.episodeNumber) || '01';
+    const title = str(input.episodeTitle) || 'PIPELINE HYGIENE';
+    return {
+      ok: true,
+      spec: {
+        episodeNumber: number.slice(0, 4),
+        episodeTitle: title.slice(0, 80),
+        accent: hex(input.accent, '#34D399'),
+      },
+    };
+  }
+
   if (capability.id === 'film-character') {
     const brief = str(input.brief) || 'The GTM Guardian in a hero shot.';
     const requested = Number(input.seconds) || 3;
