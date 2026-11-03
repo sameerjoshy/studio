@@ -87,7 +87,7 @@ jobs:
       - name: Install XTTS
         if: steps.job.outputs.capability == 'voice-xtts' || (steps.job.outputs.capability == 'film-dub' && steps.job.outputs.engine == 'xtts') || (steps.job.outputs.capability == 'film-story' && steps.job.outputs.voice_engine == 'xtts')
         continue-on-error: true
-        run: pip install --quiet TTS
+        run: pip install --quiet "transformers==4.46.3" "numpy<2" TTS
 
       # ---- Other engines ----
 
