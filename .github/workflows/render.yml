@@ -127,4 +127,5 @@ jobs:
           KOKORO_MODEL: runner/models/kokoro-v1.0.onnx
           KOKORO_VOICES: runner/models/voices-v1.0.bin
           COQUI_TOS_AGREED: "1"
+          TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD: "1"
         run: node runner/entry.mjs
